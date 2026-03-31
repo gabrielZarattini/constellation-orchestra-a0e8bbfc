@@ -59,6 +59,7 @@ export function AgentEdge({ fromPos, toPos, status }: AgentEdgeProps) {
 
   return (
     <group>
+      {/* @ts-ignore - R3F line element differs from SVG line */}
       <line ref={lineRef} geometry={lineGeom}>
         <lineBasicMaterial color={color} transparent opacity={opacity} linewidth={1} />
       </line>
