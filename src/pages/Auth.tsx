@@ -70,13 +70,13 @@ const Auth = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleOAuthLogin = async (provider: 'google' | 'apple') => {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth('google', {
+    const result = await lovable.auth.signInWithOAuth(provider, {
       redirect_uri: window.location.origin,
     });
     if (result.error) {
-      toast({ title: 'Erro ao entrar com Google', description: String(result.error), variant: 'destructive' });
+      toast({ title: `Erro ao entrar com ${provider}`, description: String(result.error), variant: 'destructive' });
       setLoading(false);
     }
     if (result.redirected) return;
