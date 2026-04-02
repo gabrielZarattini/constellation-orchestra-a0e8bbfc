@@ -70,13 +70,13 @@ const Auth = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleOAuthLogin = async (provider: 'google' | 'apple') => {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth('google', {
+    const result = await lovable.auth.signInWithOAuth(provider, {
       redirect_uri: window.location.origin,
     });
     if (result.error) {
-      toast({ title: 'Erro ao entrar com Google', description: String(result.error), variant: 'destructive' });
+      toast({ title: `Erro ao entrar com ${provider}`, description: String(result.error), variant: 'destructive' });
       setLoading(false);
     }
     if (result.redirected) return;
@@ -115,7 +115,7 @@ const Auth = () => {
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={handleGoogleLogin}
+                onClick={() => handleOAuthLogin('google')}
                 disabled={loading}
               >
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
@@ -127,6 +127,21 @@ const Auth = () => {
                   </svg>
                 )}
                 Continuar com Google
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => handleOAuthLogin('apple')}
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
+                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                  </svg>
+                )}
+                Continuar com Apple
               </Button>
 
               <div className="relative">
