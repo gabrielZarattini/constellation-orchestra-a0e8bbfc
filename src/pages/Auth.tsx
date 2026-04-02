@@ -70,6 +70,20 @@ const Auth = () => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    const result = await lovable.auth.signInWithOAuth('google', {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) {
+      toast({ title: 'Erro ao entrar com Google', description: String(result.error), variant: 'destructive' });
+      setLoading(false);
+    }
+    if (result.redirected) return;
+    setLoading(false);
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
