@@ -27,7 +27,7 @@ const Auth = () => {
     if (error) {
       toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' });
     } else {
-      navigate('/');
+      navigate('/dashboard');
     }
   };
 
@@ -81,7 +81,7 @@ const Auth = () => {
     }
     if (result.redirected) return;
     setLoading(false);
-    navigate('/');
+    navigate('/dashboard');
   };
 
   return (
