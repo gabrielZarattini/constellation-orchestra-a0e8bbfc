@@ -35,9 +35,7 @@ function HeroGraph() {
         ];
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
         return (
-          <line key={i} geometry={geometry}>
-            <lineBasicMaterial color="#38bdf8" opacity={0.3} transparent />
-          </line>
+          <primitive key={i} object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#38bdf8', opacity: 0.3, transparent: true }))} />
         );
       })}
 
