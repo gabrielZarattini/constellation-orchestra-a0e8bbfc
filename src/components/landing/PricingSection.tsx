@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Check } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const plans = [
   {
@@ -9,6 +11,7 @@ const plans = [
     price: 'R$ 147',
     period: '/mês',
     description: 'Para criadores e pequenos negócios',
+    priceId: '', // Will be set after creating Stripe products
     features: [
       '3 redes sociais',
       '100 posts/mês',
@@ -25,6 +28,7 @@ const plans = [
     price: 'R$ 397',
     period: '/mês',
     description: 'Para agências e equipes de marketing',
+    priceId: '',
     features: [
       '8 redes sociais',
       'Posts ilimitados',
@@ -43,6 +47,7 @@ const plans = [
     price: 'R$ 997',
     period: '/mês',
     description: 'Para operações em escala',
+    priceId: '',
     features: [
       'Tudo do Pro',
       'Créditos ilimitados',
@@ -61,6 +66,27 @@ const plans = [
 
 export function PricingSection() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { checkout, loading } = useSubscription();
+
+  const handlePlanClick = (plan: typeof plans[0]) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    if (plan.name === 'Enterprise') {
+      window.open('mailto:contato@magiccrew.ai?subject=Plano Enterprise', '_blank');
+      return;
+    }
+
+    if (plan.priceId) {
+      checkout(plan.priceId);
+    } else {
+      // Stripe products not created yet — redirect to auth
+      navigate('/auth');
+    }
+  };
 
   return (
     <section id="pricing" className="py-24 px-4 sm:px-6 lg:px-8 bg-secondary/30">
@@ -119,8 +145,10 @@ export function PricingSection() {
                 size="lg"
                 variant={plan.highlighted ? 'default' : 'outline'}
                 className={`w-full ${plan.highlighted ? 'glow-primary' : ''}`}
-                onClick={() => navigate('/auth')}
+                onClick={() => handlePlanClick(plan)}
+                disabled={loading}
               >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 {plan.cta}
               </Button>
             </motion.div>
