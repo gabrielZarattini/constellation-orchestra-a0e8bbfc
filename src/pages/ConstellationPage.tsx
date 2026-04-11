@@ -1,0 +1,53 @@
+import { CrewGraph } from '@/components/graph/CrewGraph';
+import { HUD } from '@/components/HUD';
+import { ConfigPanel } from '@/components/panels/ConfigPanel';
+import { LogsPanel } from '@/components/panels/LogsPanel';
+import { AgentDetail } from '@/components/panels/AgentDetail';
+import { Legend } from '@/components/Legend';
+import { useSimulation } from '@/hooks/useSimulation';
+import { useHandTracking } from '@/hooks/useHandTracking';
+import { GestureParticleOverlay } from '@/components/gestures/GestureParticles';
+import { GestureHUD } from '@/components/gestures/GestureHUD';
+import { GestureController } from '@/components/gestures/GestureController';
+import { Button } from '@/components/ui/button';
+import { Minimize2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+
+export default function ConstellationPage() {
+  useSimulation();
+  const navigate = useNavigate();
+  const [gesturesEnabled, setGesturesEnabled] = useState(false);
+  const { handData, isLoading, error } = useHandTracking(gesturesEnabled);
+
+  return (
+    <div className="relative w-full h-[calc(100vh-3.5rem)] overflow-hidden bg-background rounded-lg">
+      <CrewGraph />
+      {gesturesEnabled && <GestureParticleOverlay handData={handData} />}
+      <GestureController handData={handData} enabled={gesturesEnabled} />
+      <HUD />
+      <AgentDetail />
+      <ConfigPanel />
+      <LogsPanel />
+      <Legend />
+      <GestureHUD
+        handData={handData}
+        isLoading={isLoading}
+        error={error}
+        enabled={gesturesEnabled}
+        onToggle={() => setGesturesEnabled(!gesturesEnabled)}
+      />
+
+      {/* Back to dashboard button */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="absolute top-3 right-3 z-50 glass-panel border-border/50 gap-1.5"
+        onClick={() => navigate('/dashboard')}
+      >
+        <Minimize2 className="h-3.5 w-3.5" />
+        Minimizar
+      </Button>
+    </div>
+  );
+}
