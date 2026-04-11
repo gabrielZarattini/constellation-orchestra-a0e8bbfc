@@ -70,6 +70,7 @@ const App = () => (
               }
             >
               <Route index element={<DashboardHome />} />
+              <Route path="constellation" element={<ConstellationPage />} />
               {/* Future routes: campaigns, content, calendar, analytics, etc. */}
             </Route>
             <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
