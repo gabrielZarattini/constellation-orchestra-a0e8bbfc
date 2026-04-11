@@ -136,7 +136,10 @@ export function useCampaigns(statusFilter?: CampaignStatus) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['campaigns'] }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['campaign', data.id] });
+    },
   });
 
   const deleteCampaign = useMutation({
