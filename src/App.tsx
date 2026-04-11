@@ -12,6 +12,9 @@ import NotFound from "./pages/NotFound.tsx";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout.tsx";
 import DashboardHome from "./pages/DashboardHome.tsx";
 import ConstellationPage from "./pages/ConstellationPage.tsx";
+import CampaignsPage from "./pages/CampaignsPage.tsx";
+import CampaignWizard from "./pages/CampaignWizard.tsx";
+import CampaignDetail from "./pages/CampaignDetail.tsx";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -71,7 +74,9 @@ const App = () => (
             >
               <Route index element={<DashboardHome />} />
               <Route path="constellation" element={<ConstellationPage />} />
-              {/* Future routes: campaigns, content, calendar, analytics, etc. */}
+              <Route path="campaigns" element={<CampaignsPage />} />
+              <Route path="campaigns/new" element={<CampaignWizard />} />
+              <Route path="campaigns/:id" element={<CampaignDetail />} />
             </Route>
             <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
             <Route path="/reset-password" element={<ResetPassword />} />

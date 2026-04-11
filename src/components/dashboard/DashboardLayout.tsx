@@ -1,15 +1,27 @@
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DashboardSidebar } from './DashboardSidebar';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffect, useState } from 'react';
 
 export function DashboardLayout() {
   const { user } = useAuth();
+  const location = useLocation();
+  const isConstellation = location.pathname.includes('/constellation');
+  const [open, setOpen] = useState(!isConstellation);
+
+  useEffect(() => {
+    if (isConstellation) {
+      setOpen(false);
+    } else {
+      setOpen(true);
+    }
+  }, [isConstellation]);
 
   return (
-    <SidebarProvider>
+    <SidebarProvider open={open} onOpenChange={setOpen}>
       <div className="min-h-screen flex w-full bg-background">
         <DashboardSidebar />
 
