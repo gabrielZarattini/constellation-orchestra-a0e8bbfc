@@ -9,6 +9,7 @@ import {
   Bell,
   Users,
   Sparkles,
+  Orbit,
   LogOut,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
@@ -30,6 +31,7 @@ import { Button } from '@/components/ui/button';
 
 const mainItems = [
   { title: 'Visão Geral', url: '/dashboard', icon: LayoutDashboard },
+  { title: 'Constelação', url: '/dashboard/constellation', icon: Orbit },
   { title: 'Campanhas', url: '/dashboard/campaigns', icon: Megaphone },
   { title: 'Conteúdo', url: '/dashboard/content', icon: FileText },
   { title: 'Calendário', url: '/dashboard/calendar', icon: Calendar },

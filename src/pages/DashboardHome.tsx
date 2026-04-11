@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ConstellationWidget } from '@/components/dashboard/ConstellationWidget';
 import {
   AreaChart,
   Area,
@@ -300,6 +301,9 @@ export default function DashboardHome() {
           </Card>
         </motion.div>
       </div>
+
+      {/* 3D Constellation widget */}
+      <ConstellationWidget />
 
       {/* Bottom row: activity + notifications */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
