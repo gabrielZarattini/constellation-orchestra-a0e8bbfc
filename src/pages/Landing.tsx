@@ -13,7 +13,7 @@ export default function Landing() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'Magic Crew',
+    name: 'Magic Constellation',
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web',
     description:
@@ -37,12 +37,12 @@ export default function Landing() {
   return (
     <>
       <Helmet>
-        <title>Magic Crew — Marketing com IA | Agentes Autônomos para Redes Sociais</title>
+        <title>Magic Constellation — Marketing com IA | Agentes Autônomos para Redes Sociais</title>
         <meta
           name="description"
           content="Plataforma SaaS de marketing omnichannel com IA. Gere conteúdo multimodal, publique em 8 redes sociais e otimize campanhas automaticamente com agentes de IA."
         />
-        <meta property="og:title" content="Magic Crew — Marketing com IA" />
+        <meta property="og:title" content="Magic Constellation — Marketing com IA" />
         <meta
           property="og:description"
           content="Orquestre agentes de IA para gerar e publicar conteúdo em todas as redes sociais. Texto, imagem, áudio, vídeo — tudo automatizado."

@@ -24,7 +24,7 @@ export function Navbar() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
-          <span className="font-heading font-bold text-lg text-foreground">Magic Crew</span>
+          <span className="font-heading font-bold text-lg text-foreground">Magic Constellation</span>
         </button>
 
         {/* Desktop */}

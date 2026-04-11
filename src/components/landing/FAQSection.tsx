@@ -8,7 +8,7 @@ import {
 
 const faqs = [
   {
-    q: 'Preciso de experiência com IA para usar o Magic Crew?',
+    q: 'Preciso de experiência com IA para usar o Magic Constellation?',
     a: 'Não! A plataforma é feita para ser intuitiva. Você define seus objetivos e os agentes de IA cuidam do resto — desde a criação do conteúdo até a publicação e otimização.',
   },
   {
@@ -28,7 +28,7 @@ const faqs = [
     a: 'Sim. Após conectar suas contas e configurar as preferências, os agentes geram, agendam e publicam conteúdo automaticamente. Você pode revisar antes se preferir.',
   },
   {
-    q: 'Posso usar o Magic Crew para clientes (agência)?',
+    q: 'Posso usar o Magic Constellation para clientes (agência)?',
     a: 'Sim! Os planos Pro e Enterprise permitem gerenciar múltiplas contas e convidar membros de equipe com diferentes permissões.',
   },
 ];

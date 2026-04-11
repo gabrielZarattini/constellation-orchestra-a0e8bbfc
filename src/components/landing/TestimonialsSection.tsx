@@ -6,14 +6,14 @@ const testimonials = [
     name: 'Mariana Costa',
     role: 'Head de Marketing, TechStart',
     avatar: 'MC',
-    quote: 'O Magic Crew triplicou nosso engajamento no Instagram em 2 meses. A IA realmente entende o tom de cada rede social.',
+    quote: 'O Magic Constellation triplicou nosso engajamento no Instagram em 2 meses. A IA realmente entende o tom de cada rede social.',
     stars: 5,
   },
   {
     name: 'Rafael Oliveira',
     role: 'CEO, Digital Agency Pro',
     avatar: 'RO',
-    quote: 'Gerenciávamos 15 contas manualmente. Com o Magic Crew, automatizamos tudo e ainda melhoramos os resultados.',
+    quote: 'Gerenciávamos 15 contas manualmente. Com o Magic Constellation, automatizamos tudo e ainda melhoramos os resultados.',
     stars: 5,
   },
   {
