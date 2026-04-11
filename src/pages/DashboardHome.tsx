@@ -302,6 +302,9 @@ export default function DashboardHome() {
         </motion.div>
       </div>
 
+      {/* 3D Constellation widget */}
+      <ConstellationWidget />
+
       {/* Bottom row: activity + notifications */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Activity feed */}

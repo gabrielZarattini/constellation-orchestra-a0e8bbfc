@@ -11,6 +11,7 @@ import ResetPassword from "./pages/ResetPassword.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout.tsx";
 import DashboardHome from "./pages/DashboardHome.tsx";
+import ConstellationPage from "./pages/ConstellationPage.tsx";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
