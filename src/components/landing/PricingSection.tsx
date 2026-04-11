@@ -11,7 +11,7 @@ const plans = [
     price: 'R$ 147',
     period: '/mês',
     description: 'Para criadores e pequenos negócios',
-    priceId: '', // Will be set after creating Stripe products
+    priceId: 'price_1TLAquKZfElfyPErrAuC95bU',
     features: [
       '3 redes sociais',
       '100 posts/mês',
