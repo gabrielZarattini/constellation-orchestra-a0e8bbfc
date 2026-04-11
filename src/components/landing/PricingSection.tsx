@@ -11,7 +11,7 @@ const plans = [
     price: 'R$ 147',
     period: '/mês',
     description: 'Para criadores e pequenos negócios',
-    priceId: '', // Will be set after creating Stripe products
+    priceId: 'price_1TLAquKZfElfyPErrAuC95bU',
     features: [
       '3 redes sociais',
       '100 posts/mês',
@@ -28,7 +28,7 @@ const plans = [
     price: 'R$ 397',
     period: '/mês',
     description: 'Para agências e equipes de marketing',
-    priceId: '',
+    priceId: 'price_1TLArCKZfElfyPErQeOTQv52',
     features: [
       '8 redes sociais',
       'Posts ilimitados',
@@ -47,7 +47,7 @@ const plans = [
     price: 'R$ 997',
     period: '/mês',
     description: 'Para operações em escala',
-    priceId: '',
+    priceId: 'price_1TLArZKZfElfyPErTXLBp0ZF',
     features: [
       'Tudo do Pro',
       'Créditos ilimitados',
