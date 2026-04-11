@@ -39,8 +39,8 @@ const mainItems = [
 ];
 
 const systemItems = [
+  { title: 'Redes Sociais', url: '/dashboard/social', icon: Users },
   { title: 'Notificações', url: '/dashboard/notifications', icon: Bell },
-  { title: 'Equipe', url: '/dashboard/team', icon: Users },
   { title: 'Assinatura', url: '/dashboard/billing', icon: CreditCard },
   { title: 'Configurações', url: '/dashboard/settings', icon: Settings },
 ];
