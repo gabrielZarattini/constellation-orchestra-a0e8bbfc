@@ -39,8 +39,12 @@ function MiniScene() {
       {agents.map((agent) => (
         <AgentNode
           key={agent.id}
-          agent={agent}
-          isSelected={false}
+          id={agent.id}
+          name={agent.name}
+          avatar={agent.avatar}
+          status={agent.status}
+          position={agent.position}
+          selected={false}
           onClick={() => {}}
         />
       ))}
