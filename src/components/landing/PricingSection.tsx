@@ -47,7 +47,7 @@ const plans = [
     price: 'R$ 997',
     period: '/mês',
     description: 'Para operações em escala',
-    priceId: '',
+    priceId: 'price_1TLArZKZfElfyPErTXLBp0ZF',
     features: [
       'Tudo do Pro',
       'Créditos ilimitados',
