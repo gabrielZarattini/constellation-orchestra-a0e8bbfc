@@ -28,7 +28,7 @@ const plans = [
     price: 'R$ 397',
     period: '/mês',
     description: 'Para agências e equipes de marketing',
-    priceId: '',
+    priceId: 'price_1TLArCKZfElfyPErQeOTQv52',
     features: [
       '8 redes sociais',
       'Posts ilimitados',
