@@ -27,7 +27,7 @@ export function CTASection() {
         </h2>
 
         <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
-          Junte-se a centenas de profissionais que já usam o Magic Crew para escalar sua presença digital.
+          Junte-se a centenas de profissionais que já usam o Magic Constellation para escalar sua presença digital.
         </p>
 
         <Button

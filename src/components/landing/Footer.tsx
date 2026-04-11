@@ -6,7 +6,7 @@ export function Footer() {
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
-          <span className="font-heading font-bold text-foreground">Magic Crew</span>
+          <span className="font-heading font-bold text-foreground">Magic Constellation</span>
         </div>
 
         <div className="flex gap-6 text-sm text-muted-foreground">
@@ -16,7 +16,7 @@ export function Footer() {
         </div>
 
         <p className="text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Magic Crew. Todos os direitos reservados.
+          © {new Date().getFullYear()} Magic Constellation. Todos os direitos reservados.
         </p>
       </div>
     </footer>

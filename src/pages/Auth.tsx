@@ -96,7 +96,7 @@ const Auth = () => {
           <div className="flex items-center justify-center gap-2 mb-2">
             <Sparkles className="h-6 w-6 text-primary" />
             <CardTitle className="text-2xl font-bold text-gradient-primary" style={{ fontFamily: 'var(--font-heading)' }}>
-              Magic Crew
+              Magic Constellation
             </CardTitle>
           </div>
           <CardDescription className="text-muted-foreground">

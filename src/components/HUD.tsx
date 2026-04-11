@@ -14,7 +14,7 @@ export function HUD() {
       <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-3 mr-2">
         <div className="flex items-center gap-1.5">
           <Orbit className="w-4 h-4 text-primary" />
-          <span className="font-heading text-xs font-semibold text-foreground">Magic Crew</span>
+          <span className="font-heading text-xs font-semibold text-foreground">Magic Constellation</span>
         </div>
         <div className="w-px h-4 bg-border" />
         <div className="flex items-center gap-1">
