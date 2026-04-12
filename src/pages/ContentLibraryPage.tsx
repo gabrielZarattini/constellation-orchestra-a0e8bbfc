@@ -53,6 +53,8 @@ import {
   Filter,
   Copy,
   Tag,
+  ImagePlus,
+  Palette,
 } from "lucide-react";
 
 const CONTENT_TYPES = [
