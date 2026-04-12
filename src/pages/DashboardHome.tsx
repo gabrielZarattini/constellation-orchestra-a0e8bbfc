@@ -186,6 +186,19 @@ export default function DashboardHome() {
     loading,
   } = useDashboardData();
 
+  // Onboarding
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+
+  useEffect(() => {
+    if (!user || onboardingChecked) return;
+    supabase.from('profiles').select('onboarding_completed').eq('id', user.id).single()
+      .then(({ data }) => {
+        if (data && !data.onboarding_completed) setShowOnboarding(true);
+        setOnboardingChecked(true);
+      });
+  }, [user, onboardingChecked]);
+
   const now = new Date();
   const { data: upcomingPosts } = useScheduledPosts({ from: startOfDay(now), to: endOfDay(addDays(now, 7)) });
 
