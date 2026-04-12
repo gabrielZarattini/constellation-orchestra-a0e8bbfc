@@ -1,53 +1,67 @@
 
 
-# Plano: Fase 11 (Áudio/Música com IA) + Thumbnails de Imagem na Biblioteca
+# Plano: Fase 12 (Vídeo com IA) + Player TTS + Correção Auth + Testes
 
-## Verificação das Features Existentes
-- Calendário: ✅ Posts agendados criam e aparecem no grid. Drag-and-drop e duplicar estão implementados.
-- Geração de Imagem: ✅ Edge function retorna 200, imagem é gerada e salva no storage.
-- Constelação: ✅ Modo Conectar e + Agente visíveis e funcionais.
+## Problemas Encontrados
 
-## 1. Thumbnails de Imagem na Grid de Conteúdo
+### Auth nas Edge Functions
+As chamadas de geração de áudio e imagem usam `VITE_SUPABASE_PUBLISHABLE_KEY` como Bearer token, mas as edge functions validam via `supabase.auth.getUser()`. Isso funciona **apenas quando o usuário está logado** e o token de sessão é passado. O código atual passa a anon key em vez do token do usuário logado.
 
-### O que será feito
-- No card de conteúdo (`ContentLibraryPage.tsx`), quando `item.type === 'image'` e `item.media_url` existir, mostrar thumbnail da imagem acima do texto
-- Thumbnail com `aspect-ratio: 16/9`, `object-cover`, `rounded-t-lg`
-- Fallback com ícone de imagem caso a URL falhe
+**Correção**: Usar `supabase.functions.invoke()` (que passa automaticamente o token de sessão) ou obter o token via `supabase.auth.getSession()` e passá-lo no header Authorization.
 
-### Arquivo
-- `src/pages/ContentLibraryPage.tsx` (editar seção do card, ~linhas 615-710)
+### Thumbnails de Imagem
+Já implementados corretamente (linhas 807-818 do ContentLibraryPage). ✅
 
-## 2. Fase 11: Geração de Áudio/Música com IA
+## 1. Corrigir Autenticação nas Chamadas de Edge Functions
 
-### Abordagem
-- Usar Lovable AI Gateway com modelo de texto para gerar **scripts de áudio** (roteiros para podcasts, narração, jingles)
-- Para geração de áudio real (TTS/música), seria necessário ElevenLabs API key
-- Implementar geração de scripts de áudio como conteúdo tipo `audio` na biblioteca
+Alterar `ContentLibraryPage.tsx` para usar o token de sessão do usuário em vez da anon key nas chamadas de:
+- `generate-content`
+- `generate-image`
+- `generate-audio-script`
+- Nova function `generate-video-script`
+
+Usar `supabase.auth.getSession()` para obter o token correto.
+
+## 2. Fase 12: Geração de Roteiro de Vídeo com IA
 
 ### Edge Function
-- Criar `supabase/functions/generate-audio-script/index.ts`
-- Usar modelo `google/gemini-3-flash-preview` para gerar roteiros de áudio/podcast/jingle
-- Receber `prompt`, `format` (podcast, narração, jingle, música), `duration` (curto, médio, longo)
+- Criar `supabase/functions/generate-video-script/index.ts`
+- Modelo: `google/gemini-3-flash-preview` via Lovable AI Gateway
+- Receber `prompt`, `format` (reels, youtube, tutorial, storytelling), `duration`
+- Gerar roteiro com marcações de cenas, cortes, texto em tela, narração
 
 ### Frontend
-- Adicionar botão "Gerar Áudio" na `ContentLibraryPage.tsx`
-- Dialog com campo de prompt, seletor de formato (podcast, narração, jingle, música de fundo)
-- Resultado salvo como conteúdo tipo `audio` com body contendo o roteiro
+- Adicionar botão "Gerar Vídeo" na `ContentLibraryPage`
+- Dialog com prompt, formato de vídeo, duração
+- Resultado salvo como tipo `video` com body contendo o roteiro
+- Ícone: `Video` do lucide
 
-### Arquivos
-- `supabase/functions/generate-audio-script/index.ts` (novo)
-- `src/pages/ContentLibraryPage.tsx` (adicionar dialog + botão + thumbnails)
+## 3. Player TTS na Biblioteca
+
+- Adicionar botão "Ouvir" nos cards de conteúdo tipo `audio`
+- Usar `window.speechSynthesis` (Web Speech API) para reproduzir o texto do body
+- Controles: play/pause/stop
+- Seletor de voz (vozes pt-BR disponíveis no navegador)
+- Estado de reprodução visual no card (ícone animado)
+
+## Arquivos
+
+| Arquivo | Ação |
+|---------|------|
+| `supabase/functions/generate-video-script/index.ts` | Criar |
+| `src/pages/ContentLibraryPage.tsx` | Editar (corrigir auth, adicionar dialog vídeo, player TTS) |
 
 ## Detalhes Técnicos
 
-- Nenhuma migration de banco necessária — `content_library` já suporta type `audio`
-- Thumbnails usam `media_url` existente nos registros de imagem
-- Edge function usa Lovable AI Gateway (sem API key extra)
-- Para TTS real no futuro, perguntaremos sobre ElevenLabs API key
+- Nenhuma migration necessária — `content_type` já inclui `video`
+- TTS usa API nativa do navegador (sem custo, sem API key)
+- Edge function segue mesmo padrão das existentes (auth + streaming SSE)
+- Corrigir auth: `const { data: { session } } = await supabase.auth.getSession(); fetch(..., { headers: { Authorization: \`Bearer \${session.access_token}\` } })`
 
 ## Ordem de Execução
-1. Adicionar thumbnails de imagem nos cards da biblioteca
-2. Criar edge function `generate-audio-script`
-3. Integrar dialog de geração de áudio na ContentLibraryPage
-4. Atualizar roadmap
+1. Corrigir autenticação em todas as chamadas de edge functions
+2. Criar edge function `generate-video-script`
+3. Adicionar dialog de geração de vídeo na ContentLibraryPage
+4. Implementar player TTS nos cards de áudio
+5. Atualizar roadmap (Fase 12 ✅)
 
