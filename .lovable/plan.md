@@ -1,58 +1,70 @@
 
 
-# Plano: Fase 16 (Self-Optimization) + Comparativo de Campanhas
+# Plano: Fase 18 (WordPress + Blog Engine) + Cron Self-Heal
 
-## 1. Fase 16: Self-Optimization — Auto-otimização com IA
+## 1. Cron Job — Self-Heal Automático a Cada 5 Minutos
 
-### Edge Function — `self-optimize`
-- Criar `supabase/functions/self-optimize/index.ts`
-- Modelo: `google/gemini-3-flash-preview` via Lovable AI Gateway
-- Recebe: `user_id` (do token auth)
-- Coleta dados de `campaign_metrics`, `scheduled_posts` e `content_library` do usuário
-- Analisa padrões: melhores horários, plataformas com mais engajamento, tipos de conteúdo que performam melhor
-- Retorna via tool calling: recomendações de horários otimizados, plataformas prioritárias, tipos de conteúdo recomendados, score de otimização atual
-- Salva recomendações na tabela `optimization_policy` (já existe)
+### Pré-requisitos
+- Habilitar extensões `pg_cron` e `pg_net` via migration
+- Criar cron job via SQL insert (não migration) que chama `self-heal` a cada 5 min com service role key
 
-### Frontend — Painel de Auto-otimização no Dashboard
-- Adicionar widget "Auto-otimização IA" no `DashboardHome.tsx`
-- Botão "Analisar e Otimizar" que chama a edge function
-- Exibe: score de otimização, lista de recomendações com ações sugeridas, histórico de otimizações aplicadas (da tabela `optimization_policy`)
-- Cada recomendação tem botão "Aplicar" que atualiza configurações relevantes
+### Implementação
+- Migration: `CREATE EXTENSION IF NOT EXISTS pg_cron; CREATE EXTENSION IF NOT EXISTS pg_net;`
+- SQL insert: `cron.schedule('self-heal-every-5min', '*/5 * * * *', ...)` chamando `/functions/v1/self-heal` com Authorization Bearer do anon key
+- O self-heal precisa funcionar sem user context para o cron — ajustar a edge function para aceitar chamadas com service role key e processar TODOS os usuários (não apenas um)
+
+### Ajuste na Edge Function `self-heal`
+- Se chamado com service role (sem user específico): buscar todos os usuários com posts/contas ativas e processar cada um
+- Se chamado com user token: manter comportamento atual (apenas aquele usuário)
+
+## 2. Fase 18: WordPress + Blog Engine
+
+### Conector WordPress.com
+- Usar `standard_connectors--connect` para conectar WordPress.com
+- Edge function usa gateway `connector-gateway.lovable.dev/wordpress_com/`
+
+### Edge Function — `publish-wordpress`
+- Criar `supabase/functions/publish-wordpress/index.ts`
+- Recebe: `title`, `content` (HTML), `tags`, `categories`, `status` (draft/publish), `site_id`
+- Publica via gateway: `POST /rest/v1.1/sites/{site}/posts/new`
+- Retorna URL do post publicado
+
+### Frontend — Página Blog Engine
+- Criar `src/pages/BlogEditorPage.tsx`
+- Editor WYSIWYG simples com `contentEditable` div + toolbar (bold, italic, heading, link, image, list)
+- Templates de artigos SEO: "How-to", "Listicle", "Case Study", "Tutorial"
+- Ao selecionar template, preenche estrutura base do artigo
+- Botão "Publicar no WordPress" que chama a edge function
+- Botão "Gerar com IA" que chama `generate-content` com tipo blog e insere no editor
+- Rota: `/dashboard/blog`
+
+### Sidebar
+- Adicionar item "Blog" no menu principal com ícone `BookOpen`
 
 ### Arquivos
 | Arquivo | Ação |
 |---------|------|
-| `supabase/functions/self-optimize/index.ts` | Criar |
-| `src/pages/DashboardHome.tsx` | Editar (widget otimização) |
-
-## 2. Comparativo de Campanhas no Analytics
-
-### Nova aba/seção no AnalyticsPage
-- Adicionar aba "Comparativo" no `AnalyticsPage.tsx`
-- Selector para escolher 2 campanhas para comparar
-- Gráficos lado a lado: impressões, cliques, engajamentos, CTR, spend, conversões
-- Tabela comparativa com métricas resumidas
-- Dados reais de `campaign_metrics` filtrados por `campaign_id`
-- Modo demo com campanhas fictícias quando sem dados
-
-### Ajustes no fetch
-- Buscar também `campaign_id` e nome da campanha (join com `campaigns`) para popular o comparativo
-
-### Arquivos
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/AnalyticsPage.tsx` | Editar (aba comparativo + fetch campaign_id) |
+| `supabase/functions/self-heal/index.ts` | Editar (modo cron sem user) |
+| `supabase/functions/publish-wordpress/index.ts` | Criar |
+| `src/pages/BlogEditorPage.tsx` | Criar |
+| `src/App.tsx` | Editar (rota blog) |
+| `src/components/dashboard/DashboardSidebar.tsx` | Editar (item Blog) |
 
 ## Detalhes Técnicos
 
-- `self-optimize` usa service role para ler métricas completas do usuário autenticado
-- Tabela `optimization_policy` já existe com campos `action_type`, `action_details`, `context`, `reward`, `applied`
-- Comparativo usa `campaign_metrics.campaign_id` (já existe) + join com `campaigns.name`
-- Nenhuma migration necessária
+- WordPress.com connector usa gateway com `LOVABLE_API_KEY` + `WORDPRESS_COM_API_KEY`
+- Editor WYSIWYG usa `contentEditable` nativo — sem dependência extra
+- Templates SEO são constantes estáticas com estrutura HTML
+- Cron job usa `pg_cron` + `pg_net` para HTTP POST automático
+- Migration para extensões, SQL insert para o cron schedule
 
 ## Ordem de Execução
-1. Criar edge function `self-optimize`
-2. Integrar widget de otimização no DashboardHome
-3. Adicionar aba de comparativo no AnalyticsPage
-4. Atualizar roadmap (Fase 16 ✅)
+1. Habilitar extensões pg_cron e pg_net (migration)
+2. Ajustar self-heal para modo cron (todos os usuários)
+3. Criar cron job via SQL insert
+4. Conectar WordPress.com connector
+5. Criar edge function publish-wordpress
+6. Criar BlogEditorPage com editor WYSIWYG + templates
+7. Registrar rota e sidebar
+8. Atualizar roadmap (Fase 18 ✅)
 
