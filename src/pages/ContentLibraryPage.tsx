@@ -231,6 +231,12 @@ export default function ContentLibraryPage() {
   const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
   const synthRef = useRef(window.speechSynthesis);
 
+  // SEO analysis state
+  const [seoOpen, setSeoOpen] = useState(false);
+  const [seoAnalyzing, setSeoAnalyzing] = useState(false);
+  const [seoResult, setSeoResult] = useState<any>(null);
+  const [seoContentId, setSeoContentId] = useState<string | null>(null);
+
   const IMG_STYLES = [
     { value: "fotográfico", label: "Fotográfico" },
     { value: "ilustração", label: "Ilustração" },
@@ -425,6 +431,43 @@ export default function ContentLibraryPage() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: "Copiado para a área de transferência!" });
+  };
+
+  const handleSEOAnalyze = async (contentId: string, text: string) => {
+    setSeoContentId(contentId);
+    setSeoOpen(true);
+    setSeoAnalyzing(true);
+    setSeoResult(null);
+    try {
+      const token = await getAuthToken();
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-seo`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ text }),
+        }
+      );
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error || "Erro na análise");
+      }
+      const data = await resp.json();
+      setSeoResult(data);
+    } catch (e: any) {
+      toast({ title: "Erro na análise SEO", description: e.message, variant: "destructive" });
+      setSeoOpen(false);
+    } finally {
+      setSeoAnalyzing(false);
+    }
+  };
+
+  const handleApplySEO = () => {
+    if (!seoResult?.optimized_text || !seoContentId) return;
+    updateContent.mutate({ id: seoContentId, body: seoResult.optimized_text });
+    setSeoOpen(false);
+    setSeoResult(null);
+    toast({ title: "Conteúdo otimizado aplicado!" });
   };
 
   const typeIcon = (type: string) => {
