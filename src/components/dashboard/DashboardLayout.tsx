@@ -1,10 +1,27 @@
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DashboardSidebar } from './DashboardSidebar';
-import { Outlet, useLocation } from 'react-router-dom';
-import { Bell } from 'lucide-react';
+import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Bell, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState } from 'react';
+
+const BREADCRUMB_MAP: Record<string, string> = {
+  dashboard: 'Dashboard',
+  constellation: 'Constelação',
+  campaigns: 'Campanhas',
+  new: 'Nova',
+  content: 'Conteúdo',
+  calendar: 'Calendário',
+  analytics: 'Analytics',
+  social: 'Redes Sociais',
+  blog: 'Blog',
+  admin: 'Administração',
+  'video-editor': 'Editor de Vídeo',
+  notifications: 'Notificações',
+  billing: 'Assinatura',
+  settings: 'Configurações',
+};
 
 export function DashboardLayout() {
   const { user } = useAuth();
@@ -13,12 +30,17 @@ export function DashboardLayout() {
   const [open, setOpen] = useState(!isConstellation);
 
   useEffect(() => {
-    if (isConstellation) {
-      setOpen(false);
-    } else {
-      setOpen(true);
-    }
+    if (isConstellation) setOpen(false);
+    else setOpen(true);
   }, [isConstellation]);
+
+  // Build breadcrumbs
+  const segments = location.pathname.split('/').filter(Boolean);
+  const crumbs = segments.map((seg, i) => ({
+    label: BREADCRUMB_MAP[seg] || seg,
+    path: '/' + segments.slice(0, i + 1).join('/'),
+    isLast: i === segments.length - 1,
+  }));
 
   return (
     <SidebarProvider open={open} onOpenChange={setOpen}>
@@ -26,13 +48,21 @@ export function DashboardLayout() {
         <DashboardSidebar />
 
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Top bar */}
           <header className="h-14 flex items-center justify-between border-b border-border px-4 shrink-0">
             <div className="flex items-center gap-2">
               <SidebarTrigger />
-              <h1 className="font-heading font-semibold text-foreground text-lg hidden sm:block">
-                Dashboard
-              </h1>
+              <nav className="hidden sm:flex items-center gap-1 text-sm">
+                {crumbs.map((c, i) => (
+                  <span key={c.path} className="flex items-center gap-1">
+                    {i > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                    {c.isLast ? (
+                      <span className="font-semibold text-foreground">{c.label}</span>
+                    ) : (
+                      <Link to={c.path} className="text-muted-foreground hover:text-foreground transition-colors">{c.label}</Link>
+                    )}
+                  </span>
+                ))}
+              </nav>
             </div>
 
             <div className="flex items-center gap-3">
@@ -48,7 +78,6 @@ export function DashboardLayout() {
             </div>
           </header>
 
-          {/* Main content */}
           <main className="flex-1 overflow-auto p-4 md:p-6">
             <Outlet />
           </main>
