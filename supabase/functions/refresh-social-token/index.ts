@@ -68,6 +68,40 @@ Deno.serve(async (req) => {
       newExpiresAt = data.expires_in
         ? new Date(Date.now() + data.expires_in * 1000).toISOString()
         : null;
+    } else if (account.platform === "twitter") {
+      if (!account.refresh_token) {
+        return new Response(JSON.stringify({ error: "No refresh token available" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const clientId = Deno.env.get("TWITTER_CLIENT_ID")!;
+      const clientSecret = Deno.env.get("TWITTER_CLIENT_SECRET")!;
+      const res = await fetch("https://api.x.com/2/oauth2/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+        },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: account.refresh_token,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error_description || "Twitter refresh failed");
+      newAccessToken = data.access_token;
+      newExpiresAt = data.expires_in
+        ? new Date(Date.now() + data.expires_in * 1000).toISOString()
+        : null;
+
+      // Also update refresh token if rotated
+      if (data.refresh_token) {
+        await supabase
+          .from("social_accounts")
+          .update({ refresh_token: data.refresh_token })
+          .eq("id", social_account_id);
+      }
     } else {
       return new Response(JSON.stringify({ error: `Refresh not supported for ${account.platform}` }), {
         status: 400,
