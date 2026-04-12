@@ -9,7 +9,13 @@ import {
   Activity,
   Clock,
   TrendingUp,
+  Send,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
+import { useScheduledPosts } from '@/hooks/useScheduledPosts';
+import { format, parseISO, startOfDay, endOfDay, addDays } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -123,6 +129,9 @@ export default function DashboardHome() {
     recentActivity,
     loading,
   } = useDashboardData();
+
+  const now = new Date();
+  const { data: upcomingPosts } = useScheduledPosts({ from: startOfDay(now), to: endOfDay(addDays(now, 7)) });
 
   const planLabel = subscription?.plan
     ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)
