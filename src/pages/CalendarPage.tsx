@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { supabase } from '@/integrations/supabase/client';
 import { useScheduledPosts, useCreateScheduledPost, useUpdateScheduledPost, useDeleteScheduledPost, type ScheduledPost } from '@/hooks/useScheduledPosts';
 import { useContentLibrary } from '@/hooks/useContentLibrary';
 import { useSocialAccounts } from '@/hooks/useSocialAccounts';
@@ -13,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ChevronLeft, ChevronRight, Plus, Trash2, CalendarDays, LayoutList, Loader2, Copy, GripVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, CalendarDays, LayoutList, Loader2, Copy, GripVertical, Sparkles, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
