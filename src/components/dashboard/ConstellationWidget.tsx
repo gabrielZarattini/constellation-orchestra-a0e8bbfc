@@ -54,8 +54,22 @@ function MiniScene() {
 }
 
 export function ConstellationWidget() {
+  const { isLoading: crewLoading } = useCrewData();
+  const loaded = useCrewStore((s) => s.loaded);
   useSimulation();
   const navigate = useNavigate();
+
+  if (crewLoading || !loaded) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+        <Card className="glass-panel overflow-hidden">
+          <CardContent className="h-[280px] flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
