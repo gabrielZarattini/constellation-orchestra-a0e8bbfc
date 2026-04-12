@@ -59,6 +59,7 @@ import {
   Volume2,
   VolumeX,
   Square,
+  Film,
 } from "lucide-react";
 
 const CONTENT_TYPES = [
