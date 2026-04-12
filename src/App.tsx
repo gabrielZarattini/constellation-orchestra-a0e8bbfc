@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound.tsx";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout.tsx";
 import DashboardHome from "./pages/DashboardHome.tsx";
 import ConstellationPage from "./pages/ConstellationPage.tsx";
+import VideoEditorPage from "./pages/VideoEditorPage.tsx";
 import CampaignsPage from "./pages/CampaignsPage.tsx";
 import CampaignWizard from "./pages/CampaignWizard.tsx";
 import CampaignDetail from "./pages/CampaignDetail.tsx";
@@ -82,6 +83,7 @@ const App = () => (
               <Route path="campaigns/new" element={<CampaignWizard />} />
               <Route path="campaigns/:id" element={<CampaignDetail />} />
               <Route path="content" element={<ContentLibraryPage />} />
+              <Route path="content/video-editor/:id" element={<VideoEditorPage />} />
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="social" element={<SocialAccountsPage />} />
             </Route>
