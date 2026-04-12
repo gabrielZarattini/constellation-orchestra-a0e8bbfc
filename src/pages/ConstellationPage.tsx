@@ -24,6 +24,14 @@ export default function ConstellationPage() {
   const [gesturesEnabled, setGesturesEnabled] = useState(false);
   const { handData, isLoading, error } = useHandTracking(gesturesEnabled);
 
+  if (crewLoading || !loaded) {
+    return (
+      <div className="relative w-full h-[calc(100vh-3.5rem)] flex items-center justify-center bg-background rounded-lg">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full h-[calc(100vh-3.5rem)] overflow-hidden bg-background rounded-lg">
       <CrewGraph />
