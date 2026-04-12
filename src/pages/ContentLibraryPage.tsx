@@ -974,6 +974,12 @@ export default function ContentLibraryPage() {
                           <Copy className="h-4 w-4 mr-2" />
                           Copiar
                         </DropdownMenuItem>
+                        {item.type === "video" && (
+                          <DropdownMenuItem onClick={() => navigate(`/dashboard/content/video-editor/${item.id}`)}>
+                            <Film className="h-4 w-4 mr-2" />
+                            Editar Roteiro
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           onClick={() =>
                             updateContent.mutate({
