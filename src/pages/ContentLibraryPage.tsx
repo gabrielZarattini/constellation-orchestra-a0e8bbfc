@@ -489,6 +489,63 @@ export default function ContentLibraryPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Image Generate */}
+          <Dialog open={imageOpen} onOpenChange={setImageOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <ImagePlus className="h-4 w-4" />
+                Gerar Imagem
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-primary" />
+                  Gerar Imagem com IA
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>Prompt</Label>
+                  <Textarea
+                    value={imgPrompt}
+                    onChange={(e) => setImgPrompt(e.target.value)}
+                    placeholder="Descreva a imagem que deseja criar..."
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label>Estilo</Label>
+                  <Select value={imgStyle} onValueChange={setImgStyle}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {IMG_STYLES.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleImageGenerate} disabled={imgGenerating || !imgPrompt.trim()} className="w-full gap-2">
+                  {imgGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                  {imgGenerating ? "Gerando..." : "Gerar Imagem"}
+                </Button>
+                {imgPreview && (
+                  <div className="rounded-lg border overflow-hidden">
+                    <img src={imgPreview} alt="Imagem gerada" className="w-full h-auto max-h-[300px] object-contain bg-muted" />
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                {imgPreview && (
+                  <Button onClick={handleSaveImage} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Salvar na Biblioteca
+                  </Button>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
