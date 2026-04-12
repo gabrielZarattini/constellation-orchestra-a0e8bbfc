@@ -1,42 +1,52 @@
 
 
-# Plano: Resolver Security Findings + Configurar Credenciais LinkedIn
+# Plano: Fase 9 (Calendário) + CRUD de Agentes na Constelação
 
-## 1. Corrigir Security Findings
+## Verificação de Isolamento
+Dados já isolados: 3 usuários no banco, cada um com 6 agentes próprios. RLS `auth.uid() = user_id` está ativo em todas as tabelas. ✅ Confirmado.
 
-### 1a. social_accounts — UPDATE sem WITH CHECK
-- Adicionar `WITH CHECK (auth.uid() = user_id)` na policy de UPDATE para evitar que um usuário reatribua a conta social para outro user_id
+## 1. Página de Calendário de Publicações
 
-### 1b. subscriptions — INSERT não autorizado
-- O scan diz que usuários podem inserir subscriptions, mas olhando as policies atuais, já foi removido o INSERT. Vou verificar e marcar como fixed se já estiver correto.
+### O que será feito
+- Criar `src/pages/CalendarPage.tsx` com visualização mensal e semanal dos `scheduled_posts`
+- Hook `useScheduledPosts.ts` para CRUD de posts agendados via Supabase
+- Visualização mensal: grid de dias com dots coloridos por plataforma
+- Visualização semanal: timeline com cards de posts
+- Dialog para criar/editar agendamento (selecionar conteúdo, plataforma, conta social, data/hora)
+- Registrar rota `/dashboard/calendar` no `App.tsx`
 
-## 2. Configurar LinkedIn OAuth
+### Arquivos
+- `src/pages/CalendarPage.tsx` (novo)
+- `src/hooks/useScheduledPosts.ts` (novo)
+- `src/App.tsx` (adicionar rota)
 
-### Passo a passo para o usuário:
-1. Acesse [LinkedIn Developer Portal](https://developer.linkedin.com/)
-2. Crie um novo App (ou use um existente)
-3. Em "Auth" → copie o **Client ID** e **Client Secret**
-4. Em "Auth" → adicione a Redirect URL: `https://vcytifmwlmvhnlwzkbbf.supabase.co/functions/v1/social-auth-callback`
-5. Em "Products" → solicite acesso a "Share on LinkedIn" e "Sign In with LinkedIn using OpenID Connect"
+## 2. CRUD de Agentes na Constelação
 
-### Secrets a adicionar:
-- `LINKEDIN_CLIENT_ID`
-- `LINKEDIN_CLIENT_SECRET`
+### O que será feito
+- Adicionar botões de ação no `ConstellationPage`: "Adicionar Agente", "Remover Agente"
+- Expandir o painel `AgentDetail` com botão "Editar" que abre um dialog para editar nome, role, avatar, provider, model, system prompt, priority
+- Hook `useAgentMutations.ts` com mutations para INSERT, UPDATE, DELETE em `crew_agents` e `crew_edges`
+- Ao adicionar agente: dialog com formulário, posição aleatória, persistência no banco
+- Ao remover: confirmação + delete do agente e edges associadas
+- Ao editar: update dos campos no banco
+- Invalidar queries após mutations para sincronizar
 
-## 3. Fix no Edge Function social-auth-init
+### Arquivos
+- `src/hooks/useAgentMutations.ts` (novo)
+- `src/components/panels/AgentDetail.tsx` (expandir com edição/remoção)
+- `src/components/panels/AddAgentDialog.tsx` (novo)
+- `src/pages/ConstellationPage.tsx` (botão adicionar)
 
-O edge function usa `supabase.auth.getClaims()` que não existe no SDK. Precisa trocar por `supabase.auth.getUser()` para validar o token corretamente.
+## Detalhes Técnicos
 
-## Arquivos a modificar
-- Migration SQL: adicionar WITH CHECK na policy de UPDATE do social_accounts
-- `supabase/functions/social-auth-init/index.ts`: fix auth validation
-- `supabase/functions/social-auth-callback/index.ts`: fix auth validation  
-- `supabase/functions/publish-social/index.ts`: fix auth validation
+- Nenhuma migration necessária — tabelas `scheduled_posts`, `crew_agents`, `crew_edges` já existem com RLS correto
+- Calendário usa `date-fns` (já disponível) e componente `Calendar` do shadcn
+- Mutations usam `useMutation` do React Query com invalidação de cache
+- Agentes novos recebem `agent_key` gerado como `agent-${Date.now()}`
 
-## Ordem de execução
-1. Criar migration para fix de segurança
-2. Corrigir edge functions (auth validation)
-3. Deploy edge functions
-4. Solicitar as credenciais do LinkedIn ao usuário
-5. Testar o fluxo OAuth
+## Ordem de Execução
+1. Criar hook `useScheduledPosts` + página `CalendarPage` + registrar rota
+2. Criar hook `useAgentMutations` + dialog de adicionar agente
+3. Expandir `AgentDetail` com edição e remoção
+4. Atualizar roadmap
 
