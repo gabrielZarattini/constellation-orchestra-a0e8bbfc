@@ -21,16 +21,15 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = user.id;
     const { platform, content, social_account_id, scheduled_post_id } = await req.json();
 
     if (!platform || !content) {
@@ -40,7 +39,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch social account
+    // Fetch social account using service role
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -110,8 +109,6 @@ Deno.serve(async (req) => {
       result = await res.json();
       if (!res.ok) throw new Error(JSON.stringify(result));
     } else if (platform === "instagram") {
-      // Instagram requires a 2-step process via Graph API
-      // Step 1: Create media container
       const igAccountId = account.platform_user_id;
       const createRes = await fetch(
         `https://graph.facebook.com/v19.0/${igAccountId}/media`,
@@ -128,7 +125,6 @@ Deno.serve(async (req) => {
       const container = await createRes.json();
       if (!createRes.ok) throw new Error(JSON.stringify(container));
 
-      // Step 2: Publish
       const pubRes = await fetch(
         `https://graph.facebook.com/v19.0/${igAccountId}/media_publish`,
         {
