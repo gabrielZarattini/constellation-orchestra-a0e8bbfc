@@ -93,6 +93,7 @@ export default function ContentLibraryPage() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
 
   // AI generation state
   const [aiPrompt, setAiPrompt] = useState("");
