@@ -58,11 +58,11 @@ export function AgentNode({ id, name, avatar, status, position, selected, connec
         onPointerOut={() => setHovered(false)}
       >
         <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={selected ? 0.8 : hovered ? 0.5 : 0.3}
+          color={connecting ? '#a855f7' : color}
+          emissive={connecting ? '#a855f7' : color}
+          emissiveIntensity={connecting ? 1.2 : selected ? 0.8 : connectionMode ? (hovered ? 0.8 : 0.4) : hovered ? 0.5 : 0.3}
           transparent
-          opacity={0.85}
+          opacity={connecting ? 0.95 : 0.85}
           roughness={0.3}
           metalness={0.7}
         />
