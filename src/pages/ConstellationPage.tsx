@@ -5,20 +5,32 @@ import { LogsPanel } from '@/components/panels/LogsPanel';
 import { AgentDetail } from '@/components/panels/AgentDetail';
 import { Legend } from '@/components/Legend';
 import { useSimulation } from '@/hooks/useSimulation';
+import { useCrewData } from '@/hooks/useCrewData';
 import { useHandTracking } from '@/hooks/useHandTracking';
 import { GestureParticleOverlay } from '@/components/gestures/GestureParticles';
 import { GestureHUD } from '@/components/gestures/GestureHUD';
 import { GestureController } from '@/components/gestures/GestureController';
 import { Button } from '@/components/ui/button';
-import { Minimize2 } from 'lucide-react';
+import { Minimize2, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useCrewStore } from '@/store/useCrewStore';
 
 export default function ConstellationPage() {
+  const { isLoading: crewLoading } = useCrewData();
+  const loaded = useCrewStore((s) => s.loaded);
   useSimulation();
   const navigate = useNavigate();
   const [gesturesEnabled, setGesturesEnabled] = useState(false);
   const { handData, isLoading, error } = useHandTracking(gesturesEnabled);
+
+  if (crewLoading || !loaded) {
+    return (
+      <div className="relative w-full h-[calc(100vh-3.5rem)] flex items-center justify-center bg-background rounded-lg">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full h-[calc(100vh-3.5rem)] overflow-hidden bg-background rounded-lg">

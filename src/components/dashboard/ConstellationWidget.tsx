@@ -4,9 +4,10 @@ import { useCrewStore } from '@/store/useCrewStore';
 import { AgentNode } from '@/components/graph/AgentNode';
 import { AgentEdge } from '@/components/graph/AgentEdge';
 import { useSimulation } from '@/hooks/useSimulation';
+import { useCrewData } from '@/hooks/useCrewData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Maximize2, Sparkles } from 'lucide-react';
+import { Maximize2, Sparkles, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
@@ -53,8 +54,22 @@ function MiniScene() {
 }
 
 export function ConstellationWidget() {
+  const { isLoading: crewLoading } = useCrewData();
+  const loaded = useCrewStore((s) => s.loaded);
   useSimulation();
   const navigate = useNavigate();
+
+  if (crewLoading || !loaded) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+        <Card className="glass-panel overflow-hidden">
+          <CardContent className="h-[280px] flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div

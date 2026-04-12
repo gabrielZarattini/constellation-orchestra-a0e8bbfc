@@ -246,6 +246,90 @@ export type Database = {
         }
         Relationships: []
       }
+      crew_agents: {
+        Row: {
+          agent_key: string
+          avatar: string
+          created_at: string
+          id: string
+          model: string
+          name: string
+          position: Json
+          priority: string
+          provider: string
+          role: string
+          status: string
+          system_prompt: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_key: string
+          avatar?: string
+          created_at?: string
+          id?: string
+          model?: string
+          name: string
+          position?: Json
+          priority?: string
+          provider?: string
+          role?: string
+          status?: string
+          system_prompt?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_key?: string
+          avatar?: string
+          created_at?: string
+          id?: string
+          model?: string
+          name?: string
+          position?: Json
+          priority?: string
+          provider?: string
+          role?: string
+          status?: string
+          system_prompt?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      crew_edges: {
+        Row: {
+          created_at: string
+          from_agent_key: string
+          id: string
+          label: string | null
+          status: string
+          to_agent_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_agent_key: string
+          id?: string
+          label?: string | null
+          status?: string
+          to_agent_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          from_agent_key?: string
+          id?: string
+          label?: string | null
+          status?: string
+          to_agent_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       healing_actions: {
         Row: {
           action_taken: string
@@ -639,6 +723,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      seed_crew_template: { Args: { _user_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "editor" | "viewer"
