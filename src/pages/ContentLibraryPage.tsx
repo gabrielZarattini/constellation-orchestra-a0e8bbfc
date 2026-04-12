@@ -109,6 +109,22 @@ export default function ContentLibraryPage() {
   const [newType, setNewType] = useState<string>("text");
   const [newTags, setNewTags] = useState("");
 
+  // Image generation state
+  const [imgPrompt, setImgPrompt] = useState("");
+  const [imgStyle, setImgStyle] = useState("fotográfico");
+  const [imgGenerating, setImgGenerating] = useState(false);
+  const [imgPreview, setImgPreview] = useState("");
+  const [imgUrl, setImgUrl] = useState("");
+
+  const IMG_STYLES = [
+    { value: "fotográfico", label: "Fotográfico" },
+    { value: "ilustração", label: "Ilustração" },
+    { value: "3D render", label: "3D" },
+    { value: "minimalista", label: "Minimalista" },
+    { value: "arte digital", label: "Arte Digital" },
+    { value: "aquarela", label: "Aquarela" },
+  ];
+
   const { data: contents = [], isLoading } = useContentLibrary({
     type: typeFilter,
     status: statusFilter,
