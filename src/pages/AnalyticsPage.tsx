@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +32,9 @@ import {
   MousePointerClick,
   Heart,
   TrendingUp,
-  Loader2,
+  DollarSign,
+  Target,
+  Info,
 } from "lucide-react";
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -52,12 +54,41 @@ const PERIOD_OPTIONS = [
   { value: "90", label: "Últimos 90 dias" },
 ];
 
+// Demo data for new users
+const DEMO_METRICS = [
+  { platform: "instagram", impressions: 12400, clicks: 620, engagements: 1850, ctr: 5.0, spend_cents: 15000, conversions: 42, measured_at: "" },
+  { platform: "facebook", impressions: 8200, clicks: 410, engagements: 980, ctr: 5.0, spend_cents: 12000, conversions: 28, measured_at: "" },
+  { platform: "linkedin", impressions: 4500, clicks: 315, engagements: 540, ctr: 7.0, spend_cents: 8000, conversions: 18, measured_at: "" },
+  { platform: "twitter", impressions: 6800, clicks: 204, engagements: 720, ctr: 3.0, spend_cents: 5000, conversions: 12, measured_at: "" },
+  { platform: "tiktok", impressions: 18000, clicks: 900, engagements: 3200, ctr: 5.0, spend_cents: 10000, conversions: 35, measured_at: "" },
+];
+
+function generateDemoTimeline() {
+  const data = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    data.push({ date: d.toISOString().slice(0, 10), posts: Math.floor(Math.random() * 5) + 1 });
+  }
+  return data;
+}
+
+const DEMO_POSTS = [
+  { platform: "instagram", published_at: new Date().toISOString(), status: "published" },
+  { platform: "facebook", published_at: new Date().toISOString(), status: "published" },
+  { platform: "linkedin", published_at: null, status: "queued" },
+  { platform: "twitter", published_at: new Date().toISOString(), status: "published" },
+  { platform: "tiktok", published_at: null, status: "failed" },
+];
+
 interface MetricsData {
   platform: string | null;
   impressions: number | null;
   clicks: number | null;
   engagements: number | null;
   ctr: number | null;
+  spend_cents?: number | null;
+  conversions?: number | null;
   measured_at: string;
 }
 
@@ -85,7 +116,7 @@ export default function AnalyticsPage() {
       const [metricsRes, postsRes] = await Promise.all([
         supabase
           .from("campaign_metrics")
-          .select("platform, impressions, clicks, engagements, ctr, measured_at")
+          .select("platform, impressions, clicks, engagements, ctr, spend_cents, conversions, measured_at")
           .eq("user_id", user.id)
           .gte("measured_at", since.toISOString())
           .order("measured_at", { ascending: true }),
@@ -103,15 +134,25 @@ export default function AnalyticsPage() {
     fetchData();
   }, [user, period]);
 
+  const isDemo = metrics.length === 0 && posts.length === 0;
+  const activeMetrics = isDemo ? DEMO_METRICS : metrics;
+  const activePosts = isDemo ? DEMO_POSTS : posts;
+
   const filtered = platformFilter === "all"
-    ? metrics
-    : metrics.filter((m) => m.platform === platformFilter);
+    ? activeMetrics
+    : activeMetrics.filter((m) => m.platform === platformFilter);
 
   // KPIs
   const totalImpressions = filtered.reduce((s, m) => s + (m.impressions || 0), 0);
   const totalClicks = filtered.reduce((s, m) => s + (m.clicks || 0), 0);
   const totalEngagements = filtered.reduce((s, m) => s + (m.engagements || 0), 0);
   const avgCTR = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : "0.00";
+
+  // Paid KPIs
+  const totalSpend = filtered.reduce((s, m) => s + ((m as any).spend_cents || 0), 0);
+  const totalConversions = filtered.reduce((s, m) => s + ((m as any).conversions || 0), 0);
+  const cpa = totalConversions > 0 ? (totalSpend / 100 / totalConversions).toFixed(2) : "—";
+  const roas = totalSpend > 0 ? ((totalConversions * 50) / (totalSpend / 100)).toFixed(2) : "—"; // estimated avg order R$50
 
   // Platform breakdown
   const platformMap = new Map<string, { impressions: number; clicks: number; engagements: number }>();
@@ -129,29 +170,30 @@ export default function AnalyticsPage() {
     fill: PLATFORM_COLORS[name] || "hsl(var(--primary))",
   }));
 
-  // Posts timeline (published by day)
-  const publishedPosts = posts.filter((p) => p.status === "published" && p.published_at);
-  const dayMap = new Map<string, number>();
-  publishedPosts.forEach((p) => {
-    const day = p.published_at!.slice(0, 10);
-    dayMap.set(day, (dayMap.get(day) || 0) + 1);
-  });
-  const timelineData = Array.from(dayMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, count]) => ({ date, posts: count }));
+  // Posts timeline
+  const timelineData = useMemo(() => {
+    if (isDemo) return generateDemoTimeline();
+    const publishedPosts = activePosts.filter((p) => p.status === "published" && p.published_at);
+    const dayMap = new Map<string, number>();
+    publishedPosts.forEach((p) => {
+      const day = p.published_at!.slice(0, 10);
+      dayMap.set(day, (dayMap.get(day) || 0) + 1);
+    });
+    return Array.from(dayMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({ date, posts: count }));
+  }, [isDemo, activePosts]);
 
-  // Platform distribution for pie
+  const publishedPosts = activePosts.filter((p) => p.status === "published" && p.published_at);
+
+  // Platform distribution pie
   const postPlatformMap = new Map<string, number>();
-  posts.forEach((p) => {
+  activePosts.forEach((p) => {
     postPlatformMap.set(p.platform, (postPlatformMap.get(p.platform) || 0) + 1);
   });
   const pieData = Array.from(postPlatformMap.entries()).map(([name, value]) => ({
-    name,
-    value,
-    fill: PLATFORM_COLORS[name] || "hsl(var(--primary))",
+    name, value, fill: PLATFORM_COLORS[name] || "hsl(var(--primary))",
   }));
 
-  const uniquePlatforms = [...new Set(metrics.map((m) => m.platform).filter(Boolean))] as string[];
+  const uniquePlatforms = [...new Set(activeMetrics.map((m) => m.platform).filter(Boolean))] as string[];
 
   if (loading) {
     return (
@@ -167,11 +209,23 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6 p-6">
+      {/* Demo Banner */}
+      {isDemo && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm">
+          <Info className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-foreground">
+            <strong>Dados de demonstração</strong> — publique conteúdo e conecte plataformas para ver métricas reais.
+          </span>
+          <Badge variant="outline" className="ml-auto text-xs">Demo</Badge>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-primary" />
             Analytics
+            {isDemo && <Badge variant="secondary" className="text-xs">Demo</Badge>}
           </h1>
           <p className="text-sm text-muted-foreground">Métricas de desempenho das publicações</p>
         </div>
@@ -197,16 +251,17 @@ export default function AnalyticsPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <KPICard icon={Eye} label="Impressões" value={totalImpressions.toLocaleString("pt-BR")} />
         <KPICard icon={MousePointerClick} label="Cliques" value={totalClicks.toLocaleString("pt-BR")} />
         <KPICard icon={Heart} label="Engajamentos" value={totalEngagements.toLocaleString("pt-BR")} />
         <KPICard icon={TrendingUp} label="CTR Médio" value={`${avgCTR}%`} />
+        <KPICard icon={DollarSign} label="Investimento" value={`R$ ${(totalSpend / 100).toFixed(0)}`} />
+        <KPICard icon={Target} label="CPA" value={cpa === "—" ? "—" : `R$ ${cpa}`} />
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Platform metrics bar chart */}
         <Card>
           <CardHeader><CardTitle className="text-sm">Métricas por Plataforma</CardTitle></CardHeader>
           <CardContent className="h-72">
@@ -228,7 +283,6 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        {/* Posts timeline area chart */}
         <Card>
           <CardHeader><CardTitle className="text-sm">Timeline de Publicações</CardTitle></CardHeader>
           <CardContent className="h-72">
@@ -248,7 +302,6 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        {/* Platform distribution pie */}
         <Card>
           <CardHeader><CardTitle className="text-sm">Distribuição por Plataforma</CardTitle></CardHeader>
           <CardContent className="h-72">
@@ -270,34 +323,15 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        {/* Summary stats */}
         <Card>
           <CardHeader><CardTitle className="text-sm">Resumo do Período</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Total de posts</span>
-              <Badge variant="secondary">{posts.length}</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Publicados</span>
-              <Badge variant="secondary">{publishedPosts.length}</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Na fila</span>
-              <Badge variant="outline">{posts.filter((p) => p.status === "queued").length}</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Falhas</span>
-              <Badge variant="destructive">{posts.filter((p) => p.status === "failed").length}</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Plataformas ativas</span>
-              <Badge variant="secondary">{uniquePlatforms.length}</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Dados de métricas</span>
-              <Badge variant="secondary">{metrics.length} registros</Badge>
-            </div>
+            <SummaryRow label="Total de posts" value={<Badge variant="secondary">{activePosts.length}</Badge>} />
+            <SummaryRow label="Publicados" value={<Badge variant="secondary">{publishedPosts.length}</Badge>} />
+            <SummaryRow label="Na fila" value={<Badge variant="outline">{activePosts.filter((p) => p.status === "queued").length}</Badge>} />
+            <SummaryRow label="Falhas" value={<Badge variant="destructive">{activePosts.filter((p) => p.status === "failed").length}</Badge>} />
+            <SummaryRow label="Plataformas ativas" value={<Badge variant="secondary">{uniquePlatforms.length}</Badge>} />
+            <SummaryRow label="ROAS estimado" value={<Badge variant="secondary">{roas === "—" ? "—" : `${roas}x`}</Badge>} />
           </CardContent>
         </Card>
       </div>
@@ -308,16 +342,25 @@ export default function AnalyticsPage() {
 function KPICard({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
     <Card>
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className="rounded-lg bg-primary/10 p-3">
-          <Icon className="h-5 w-5 text-primary" />
+      <CardContent className="flex items-center gap-3 p-4">
+        <div className="rounded-lg bg-primary/10 p-2.5">
+          <Icon className="h-4 w-4 text-primary" />
         </div>
         <div>
           <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold text-foreground">{value}</p>
+          <p className="text-lg font-bold text-foreground">{value}</p>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      {value}
+    </div>
   );
 }
 
