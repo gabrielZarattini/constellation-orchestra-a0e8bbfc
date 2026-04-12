@@ -378,6 +378,43 @@ export default function CalendarPage() {
                 </div>
               )}
             </div>
+
+            {/* Smart Schedule Suggestions */}
+            <div className="border-t pt-3 space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSuggestTimes}
+                disabled={loadingSuggestions}
+                className="w-full gap-2 text-xs"
+              >
+                {loadingSuggestions ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                Sugerir Melhor Horário com IA
+              </Button>
+              {suggestions.length > 0 && (
+                <div className="space-y-1.5 max-h-[150px] overflow-y-auto">
+                  {suggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => applySuggestion(s.datetime)}
+                      className="w-full text-left p-2 rounded-md bg-secondary/50 hover:bg-secondary transition-colors text-xs space-y-0.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-foreground">
+                          {format(new Date(s.datetime), "EEE dd/MM 'às' HH:mm", { locale: ptBR })}
+                        </span>
+                        <Badge variant="outline" className="text-[10px] gap-1">
+                          <Zap className="h-2 w-2" />
+                          {s.score}%
+                        </Badge>
+                      </div>
+                      <p className="text-muted-foreground">{s.reason}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button onClick={handleCreate} disabled={createPost.isPending}>
