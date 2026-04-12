@@ -4,6 +4,7 @@ export type AgentStatus = 'active' | 'thinking' | 'waiting' | 'error' | 'idle';
 
 export interface Agent {
   id: string;
+  dbId?: string;
   name: string;
   role: string;
   avatar: string;
@@ -46,9 +47,13 @@ interface CrewState {
   edges: Edge[];
   logs: LogEntry[];
   providers: Provider[];
+  loaded: boolean;
   selectedAgentId: string | null;
   configOpen: boolean;
   logsOpen: boolean;
+  setAgents: (agents: Agent[]) => void;
+  setEdges: (edges: Edge[]) => void;
+  setLoaded: (loaded: boolean) => void;
   setSelectedAgent: (id: string | null) => void;
   setConfigOpen: (open: boolean) => void;
   setLogsOpen: (open: boolean) => void;
@@ -58,23 +63,6 @@ interface CrewState {
   addEdge: (edge: Omit<Edge, 'id' | 'createdAt'>) => void;
   removeEdge: (id: string) => void;
 }
-
-const INITIAL_AGENTS: Agent[] = [
-  { id: 'ceo', name: 'CEO', role: 'Chief Executive Officer', avatar: '👔', provider: 'openai', model: 'gpt-4', status: 'active', position: [0, 2, 0], systemPrompt: 'You are a visionary CEO.', priority: 'high' },
-  { id: 'sales', name: 'Sales Director', role: 'Sales & Revenue', avatar: '📊', provider: 'openai', model: 'gpt-4', status: 'thinking', position: [-3, 0, 1], systemPrompt: 'You drive revenue growth.', priority: 'high' },
-  { id: 'dev', name: 'Senior Dev', role: 'Engineering Lead', avatar: '💻', provider: 'anthropic', model: 'claude-3', status: 'active', position: [3, 0, -1], systemPrompt: 'You write clean code.', priority: 'medium' },
-  { id: 'analyst', name: 'Data Analyst', role: 'Analytics & Insights', avatar: '📈', provider: 'google', model: 'gemini-pro', status: 'waiting', position: [-1, -2, 2], systemPrompt: 'You analyze data patterns.', priority: 'medium' },
-  { id: 'support', name: 'Support Agent', role: 'Customer Success', avatar: '🎧', provider: 'openai', model: 'gpt-4', status: 'idle', position: [2, -2, -2], systemPrompt: 'You help customers.', priority: 'low' },
-  { id: 'writer', name: 'Content Writer', role: 'Content & Marketing', avatar: '✍️', provider: 'anthropic', model: 'claude-3', status: 'thinking', position: [-2, 1, -3], systemPrompt: 'You craft compelling content.', priority: 'low' },
-];
-
-const INITIAL_EDGES: Edge[] = [
-  { id: 'e1', from: 'ceo', to: 'sales', status: 'active', label: 'Strategy brief', createdAt: Date.now() },
-  { id: 'e2', from: 'sales', to: 'analyst', status: 'waiting', label: 'Data request', createdAt: Date.now() },
-  { id: 'e3', from: 'ceo', to: 'dev', status: 'active', label: 'Feature spec', createdAt: Date.now() },
-  { id: 'e4', from: 'dev', to: 'support', status: 'idle', label: 'Bug report', createdAt: Date.now() },
-  { id: 'e5', from: 'writer', to: 'ceo', status: 'active', label: 'Content draft', createdAt: Date.now() },
-];
 
 const INITIAL_PROVIDERS: Provider[] = [
   { id: 'openai', name: 'OpenAI', endpoint: 'https://api.openai.com/v1', model: 'gpt-4-turbo', connected: true },
@@ -86,13 +74,17 @@ const INITIAL_PROVIDERS: Provider[] = [
 let logCounter = 0;
 
 export const useCrewStore = create<CrewState>((set) => ({
-  agents: INITIAL_AGENTS,
-  edges: INITIAL_EDGES,
+  agents: [],
+  edges: [],
   logs: [],
   providers: INITIAL_PROVIDERS,
+  loaded: false,
   selectedAgentId: null,
   configOpen: false,
   logsOpen: false,
+  setAgents: (agents) => set({ agents }),
+  setEdges: (edges) => set({ edges }),
+  setLoaded: (loaded) => set({ loaded }),
   setSelectedAgent: (id) => set({ selectedAgentId: id }),
   setConfigOpen: (open) => set({ configOpen: open }),
   setLogsOpen: (open) => set({ logsOpen: open }),
