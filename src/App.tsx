@@ -18,6 +18,7 @@ import CampaignDetail from "./pages/CampaignDetail.tsx";
 import SocialAccountsPage from "./pages/SocialAccountsPage.tsx";
 import SocialCallback from "./pages/SocialCallback.tsx";
 import ContentLibraryPage from "./pages/ContentLibraryPage.tsx";
+import CalendarPage from "./pages/CalendarPage.tsx";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -81,6 +82,7 @@ const App = () => (
               <Route path="campaigns/new" element={<CampaignWizard />} />
               <Route path="campaigns/:id" element={<CampaignDetail />} />
               <Route path="content" element={<ContentLibraryPage />} />
+              <Route path="calendar" element={<CalendarPage />} />
               <Route path="social" element={<SocialAccountsPage />} />
             </Route>
             <Route path="/social/callback" element={<SocialCallback />} />

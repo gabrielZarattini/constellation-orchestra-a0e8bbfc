@@ -10,8 +10,9 @@ import { useHandTracking } from '@/hooks/useHandTracking';
 import { GestureParticleOverlay } from '@/components/gestures/GestureParticles';
 import { GestureHUD } from '@/components/gestures/GestureHUD';
 import { GestureController } from '@/components/gestures/GestureController';
+import { AddAgentDialog } from '@/components/panels/AddAgentDialog';
 import { Button } from '@/components/ui/button';
-import { Minimize2, Loader2 } from 'lucide-react';
+import { Minimize2, Loader2, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useCrewStore } from '@/store/useCrewStore';
@@ -22,6 +23,7 @@ export default function ConstellationPage() {
   useSimulation();
   const navigate = useNavigate();
   const [gesturesEnabled, setGesturesEnabled] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const { handData, isLoading, error } = useHandTracking(gesturesEnabled);
 
   if (crewLoading || !loaded) {
@@ -50,16 +52,29 @@ export default function ConstellationPage() {
         onToggle={() => setGesturesEnabled(!gesturesEnabled)}
       />
 
-      {/* Back to dashboard button */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="absolute top-3 right-3 z-50 glass-panel border-border/50 gap-1.5"
-        onClick={() => navigate('/dashboard')}
-      >
-        <Minimize2 className="h-3.5 w-3.5" />
-        Minimizar
-      </Button>
+      {/* Top-right actions */}
+      <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="glass-panel border-border/50 gap-1.5"
+          onClick={() => setAddOpen(true)}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Agente
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="glass-panel border-border/50 gap-1.5"
+          onClick={() => navigate('/dashboard')}
+        >
+          <Minimize2 className="h-3.5 w-3.5" />
+          Minimizar
+        </Button>
+      </div>
+
+      <AddAgentDialog open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }
