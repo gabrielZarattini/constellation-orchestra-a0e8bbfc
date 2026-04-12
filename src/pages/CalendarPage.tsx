@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { supabase } from '@/integrations/supabase/client';
 import { useScheduledPosts, useCreateScheduledPost, useUpdateScheduledPost, useDeleteScheduledPost, type ScheduledPost } from '@/hooks/useScheduledPosts';
 import { useContentLibrary } from '@/hooks/useContentLibrary';
 import { useSocialAccounts } from '@/hooks/useSocialAccounts';
@@ -13,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ChevronLeft, ChevronRight, Plus, Trash2, CalendarDays, LayoutList, Loader2, Copy, GripVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, CalendarDays, LayoutList, Loader2, Copy, GripVertical, Sparkles, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -106,6 +107,37 @@ export default function CalendarPage() {
   const [formContentId, setFormContentId] = useState('');
   const [formTime, setFormTime] = useState('12:00');
   const [formAccountId, setFormAccountId] = useState('');
+  const [suggestions, setSuggestions] = useState<Array<{ datetime: string; score: number; reason: string }>>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  const handleSuggestTimes = async () => {
+    setLoadingSuggestions(true);
+    setSuggestions([]);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/optimize-schedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ platform: formPlatform, content_type: 'general' }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setSuggestions(data.suggestions || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const applySuggestion = (datetime: string) => {
+    const d = new Date(datetime);
+    setSelectedDate(d);
+    setFormTime(format(d, 'HH:mm'));
+    setSuggestions([]);
+  };
 
   const navigate = (dir: number) => {
     setCurrentDate(view === 'month' ? (dir > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1)) : (dir > 0 ? addWeeks(currentDate, 1) : subWeeks(currentDate, 1)));
@@ -346,6 +378,43 @@ export default function CalendarPage() {
                 </div>
               )}
             </div>
+
+            {/* Smart Schedule Suggestions */}
+            <div className="border-t pt-3 space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSuggestTimes}
+                disabled={loadingSuggestions}
+                className="w-full gap-2 text-xs"
+              >
+                {loadingSuggestions ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                Sugerir Melhor Horário com IA
+              </Button>
+              {suggestions.length > 0 && (
+                <div className="space-y-1.5 max-h-[150px] overflow-y-auto">
+                  {suggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => applySuggestion(s.datetime)}
+                      className="w-full text-left p-2 rounded-md bg-secondary/50 hover:bg-secondary transition-colors text-xs space-y-0.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-foreground">
+                          {format(new Date(s.datetime), "EEE dd/MM 'às' HH:mm", { locale: ptBR })}
+                        </span>
+                        <Badge variant="outline" className="text-[10px] gap-1">
+                          <Zap className="h-2 w-2" />
+                          {s.score}%
+                        </Badge>
+                      </div>
+                      <p className="text-muted-foreground">{s.reason}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button onClick={handleCreate} disabled={createPost.isPending}>

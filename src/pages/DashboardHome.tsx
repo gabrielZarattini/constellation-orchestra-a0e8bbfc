@@ -9,7 +9,13 @@ import {
   Activity,
   Clock,
   TrendingUp,
+  Send,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
+import { useScheduledPosts } from '@/hooks/useScheduledPosts';
+import { format, parseISO, startOfDay, endOfDay, addDays } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -123,6 +129,9 @@ export default function DashboardHome() {
     recentActivity,
     loading,
   } = useDashboardData();
+
+  const now = new Date();
+  const { data: upcomingPosts } = useScheduledPosts({ from: startOfDay(now), to: endOfDay(addDays(now, 7)) });
 
   const planLabel = subscription?.plan
     ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)
@@ -304,6 +313,52 @@ export default function DashboardHome() {
 
       {/* 3D Constellation widget */}
       <ConstellationWidget />
+
+      {/* Orchestration Widget - Upcoming Posts */}
+      {upcomingPosts && upcomingPosts.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+        >
+          <Card className="glass-panel">
+            <CardHeader className="pb-2">
+              <CardTitle className="font-heading text-base flex items-center gap-2">
+                <Send className="h-4 w-4 text-primary" />
+                Próximas Publicações
+                <Badge variant="outline" className="ml-auto text-[10px]">
+                  {upcomingPosts.filter(p => p.status === 'queued').length} na fila
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {upcomingPosts.slice(0, 5).map((post) => (
+                  <div key={post.id} className="flex items-center gap-3 text-sm p-2 rounded-md bg-secondary/30">
+                    <div className={`h-2 w-2 rounded-full shrink-0 ${
+                      post.status === 'published' ? 'bg-green-500' :
+                      post.status === 'failed' ? 'bg-destructive' :
+                      post.status === 'publishing' ? 'bg-amber-500 animate-pulse' :
+                      'bg-primary'
+                    }`} />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-foreground font-medium capitalize text-xs">{post.platform}</span>
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(parseISO(post.scheduled_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {post.status === 'published' && <CheckCircle2 className="h-3 w-3 text-green-500" />}
+                      {post.status === 'failed' && <AlertTriangle className="h-3 w-3 text-destructive" />}
+                      <Badge variant="outline" className="text-[10px]">{post.status}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Bottom row: activity + notifications */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

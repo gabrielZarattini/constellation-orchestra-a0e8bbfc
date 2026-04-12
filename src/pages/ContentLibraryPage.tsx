@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useContentLibrary,
@@ -58,6 +59,7 @@ import {
   Volume2,
   VolumeX,
   Square,
+  Film,
 } from "lucide-react";
 
 const CONTENT_TYPES = [
@@ -177,6 +179,7 @@ async function streamFromEdge(
 }
 
 export default function ContentLibraryPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -972,6 +975,12 @@ export default function ContentLibraryPage() {
                           <Copy className="h-4 w-4 mr-2" />
                           Copiar
                         </DropdownMenuItem>
+                        {item.type === "video" && (
+                          <DropdownMenuItem onClick={() => navigate(`/dashboard/content/video-editor/${item.id}`)}>
+                            <Film className="h-4 w-4 mr-2" />
+                            Editar Roteiro
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           onClick={() =>
                             updateContent.mutate({
