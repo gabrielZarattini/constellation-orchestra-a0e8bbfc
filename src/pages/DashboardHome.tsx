@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   CreditCard,
@@ -12,15 +13,24 @@ import {
   Send,
   AlertTriangle,
   CheckCircle2,
+  Brain,
+  Sparkles,
+  ArrowUpRight,
+  Loader2,
 } from 'lucide-react';
 import { useScheduledPosts } from '@/hooks/useScheduledPosts';
 import { format, parseISO, startOfDay, endOfDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConstellationWidget } from '@/components/dashboard/ConstellationWidget';
+import { Progress } from '@/components/ui/progress';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
   AreaChart,
   Area,
@@ -29,8 +39,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
@@ -118,7 +126,30 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }
 
+// Impact colors
+const IMPACT_COLORS: Record<string, string> = {
+  high: 'text-green-400 bg-green-400/10',
+  medium: 'text-amber-400 bg-amber-400/10',
+  low: 'text-muted-foreground bg-muted/50',
+};
+const CATEGORY_LABELS: Record<string, string> = {
+  schedule: '📅 Horários',
+  platform: '📱 Plataformas',
+  content: '📝 Conteúdo',
+  budget: '💰 Orçamento',
+};
+
+interface OptimizationResult {
+  score: number;
+  summary: string;
+  recommendations: Array<{ category: string; title: string; description: string; impact: string; action: string }>;
+  best_times: Array<{ day: string; hour: string; platform: string }>;
+  top_platforms: string[];
+  content_mix: Array<{ type: string; percentage: number }>;
+}
+
 export default function DashboardHome() {
+  const { user } = useAuth();
   const {
     credits,
     subscription,
@@ -133,6 +164,9 @@ export default function DashboardHome() {
   const now = new Date();
   const { data: upcomingPosts } = useScheduledPosts({ from: startOfDay(now), to: endOfDay(addDays(now, 7)) });
 
+  const [optimizing, setOptimizing] = useState(false);
+  const [optResult, setOptResult] = useState<OptimizationResult | null>(null);
+
   const planLabel = subscription?.plan
     ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)
     : 'Free';
@@ -142,6 +176,20 @@ export default function DashboardHome() {
     trialing: 'bg-status-waiting/20 text-amber-400',
     past_due: 'bg-destructive/20 text-destructive',
     canceled: 'bg-muted text-muted-foreground',
+  };
+
+  const runOptimization = async () => {
+    setOptimizing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('self-optimize');
+      if (error) throw error;
+      setOptResult(data as OptimizationResult);
+      toast.success('Análise concluída!');
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao otimizar');
+    } finally {
+      setOptimizing(false);
+    }
   };
 
   if (loading) {
@@ -162,7 +210,7 @@ export default function DashboardHome() {
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
+      {/* Header */}
       <div>
         <h2 className="font-heading text-2xl font-bold text-foreground">Visão Geral</h2>
         <p className="text-sm text-muted-foreground mt-1">
@@ -173,7 +221,7 @@ export default function DashboardHome() {
         </p>
       </div>
 
-      {/* KPI cards */}
+      {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           icon={Zap}
@@ -206,6 +254,88 @@ export default function DashboardHome() {
           delay={0.24}
         />
       </div>
+
+      {/* Self-Optimization Widget */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.28 }}
+      >
+        <Card className="glass-panel border-primary/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="font-heading text-base flex items-center gap-2">
+              <Brain className="h-4 w-4 text-primary" />
+              Auto-otimização IA
+              <Badge variant="outline" className="ml-auto text-[10px]">Fase 16</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!optResult ? (
+              <div className="flex flex-col items-center py-6 gap-4">
+                <Sparkles className="h-10 w-10 text-primary/60" />
+                <p className="text-sm text-muted-foreground text-center max-w-md">
+                  Analise suas métricas, horários e conteúdos com IA para receber recomendações personalizadas de otimização.
+                </p>
+                <Button onClick={runOptimization} disabled={optimizing} className="gap-2">
+                  {optimizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
+                  {optimizing ? 'Analisando...' : 'Analisar e Otimizar'}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Score */}
+                <div className="flex items-center gap-4">
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-primary">{optResult.score}</p>
+                    <p className="text-[10px] text-muted-foreground">Score</p>
+                  </div>
+                  <div className="flex-1">
+                    <Progress value={optResult.score} className="h-2" />
+                    <p className="text-xs text-muted-foreground mt-1">{optResult.summary}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={runOptimization} disabled={optimizing} className="gap-1">
+                    {optimizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUpRight className="h-3 w-3" />}
+                    Reanalisar
+                  </Button>
+                </div>
+
+                {/* Recommendations */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Recomendações</p>
+                  {optResult.recommendations.slice(0, 5).map((rec, i) => (
+                    <div key={i} className="flex items-start gap-3 p-2.5 rounded-lg bg-secondary/30 text-sm">
+                      <span className="text-xs mt-0.5">{CATEGORY_LABELS[rec.category] || rec.category}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground text-xs">{rec.title}</p>
+                        <p className="text-[11px] text-muted-foreground">{rec.description}</p>
+                      </div>
+                      <Badge variant="outline" className={`text-[10px] ${IMPACT_COLORS[rec.impact] || ''}`}>
+                        {rec.impact}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Best times + Top platforms */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-secondary/20">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase mb-2">Melhores Horários</p>
+                    {optResult.best_times.slice(0, 3).map((t, i) => (
+                      <p key={i} className="text-xs text-foreground">{t.day} {t.hour} — {t.platform}</p>
+                    ))}
+                  </div>
+                  <div className="p-3 rounded-lg bg-secondary/20">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase mb-2">Plataformas Top</p>
+                    {optResult.top_platforms.slice(0, 3).map((p, i) => (
+                      <p key={i} className="text-xs text-foreground capitalize">{p}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
