@@ -1,67 +1,86 @@
 
 
-# Plano: Fase 12 (Vídeo com IA) + Player TTS + Correção Auth + Testes
+# Plano: Fase 13 (Agendador Inteligente) + Editor Visual de Roteiros de Vídeo
 
-## Problemas Encontrados
+## Verificação das Features Existentes
+- Geração de Vídeo: ✅ Edge function `generate-video-script` implementada. Auth corrigida com `getAuthToken()`. Dialog funcional.
+- Player TTS: ✅ Botão "Ouvir" nos cards de áudio com `speechSynthesis`.
+- Thumbnails de Imagem: ✅ Implementados nos cards.
 
-### Auth nas Edge Functions
-As chamadas de geração de áudio e imagem usam `VITE_SUPABASE_PUBLISHABLE_KEY` como Bearer token, mas as edge functions validam via `supabase.auth.getUser()`. Isso funciona **apenas quando o usuário está logado** e o token de sessão é passado. O código atual passa a anon key em vez do token do usuário logado.
+## 1. Fase 13: Agendador e Orquestrador Inteligente
 
-**Correção**: Usar `supabase.functions.invoke()` (que passa automaticamente o token de sessão) ou obter o token via `supabase.auth.getSession()` e passá-lo no header Authorization.
+### Edge Function — Otimização de Horários por IA
+- Criar `supabase/functions/optimize-schedule/index.ts`
+- Usa `google/gemini-3-flash-preview` para analisar métricas do usuário e sugerir melhores horários
+- Recebe: `platform`, `content_type`, `target_audience` (opcional)
+- Retorna: lista de horários sugeridos com score de engajamento previsto
 
-### Thumbnails de Imagem
-Já implementados corretamente (linhas 807-818 do ContentLibraryPage). ✅
+### Sistema de Auto-Publicação
+- Criar `supabase/functions/auto-publish/index.ts`
+- Verifica posts com status `queued` e `scheduled_at <= now()`
+- Para cada post: chama `publish-social` para publicar
+- Configurar cron job via `pg_cron` + `pg_net` para executar a cada minuto
 
-## 1. Corrigir Autenticação nas Chamadas de Edge Functions
+### Frontend — Dashboard de Agendamento Inteligente
+- Adicionar seção "Agendamento Inteligente" na `CalendarPage.tsx`
+- Botão "Sugerir Melhor Horário" ao criar/editar post
+- Mostra horários sugeridos com indicadores visuais de engajamento
+- Auto-preenchimento do `scheduled_at` com horário sugerido
 
-Alterar `ContentLibraryPage.tsx` para usar o token de sessão do usuário em vez da anon key nas chamadas de:
-- `generate-content`
-- `generate-image`
-- `generate-audio-script`
-- Nova function `generate-video-script`
+### Painel de Orquestração
+- Widget na `DashboardHome.tsx` mostrando próximos posts agendados e status de publicação
+- Indicadores: posts na fila, publicados hoje, falhas de publicação
 
-Usar `supabase.auth.getSession()` para obter o token correto.
-
-## 2. Fase 12: Geração de Roteiro de Vídeo com IA
-
-### Edge Function
-- Criar `supabase/functions/generate-video-script/index.ts`
-- Modelo: `google/gemini-3-flash-preview` via Lovable AI Gateway
-- Receber `prompt`, `format` (reels, youtube, tutorial, storytelling), `duration`
-- Gerar roteiro com marcações de cenas, cortes, texto em tela, narração
-
-### Frontend
-- Adicionar botão "Gerar Vídeo" na `ContentLibraryPage`
-- Dialog com prompt, formato de vídeo, duração
-- Resultado salvo como tipo `video` com body contendo o roteiro
-- Ícone: `Video` do lucide
-
-## 3. Player TTS na Biblioteca
-
-- Adicionar botão "Ouvir" nos cards de conteúdo tipo `audio`
-- Usar `window.speechSynthesis` (Web Speech API) para reproduzir o texto do body
-- Controles: play/pause/stop
-- Seletor de voz (vozes pt-BR disponíveis no navegador)
-- Estado de reprodução visual no card (ícone animado)
-
-## Arquivos
-
+### Arquivos
 | Arquivo | Ação |
 |---------|------|
-| `supabase/functions/generate-video-script/index.ts` | Criar |
-| `src/pages/ContentLibraryPage.tsx` | Editar (corrigir auth, adicionar dialog vídeo, player TTS) |
+| `supabase/functions/optimize-schedule/index.ts` | Criar |
+| `supabase/functions/auto-publish/index.ts` | Criar |
+| `src/pages/CalendarPage.tsx` | Editar (botão sugerir horário) |
+| `src/pages/DashboardHome.tsx` | Editar (widget próximos posts) |
+
+### Migrations
+- Habilitar extensões `pg_cron` e `pg_net`
+- Criar cron job para auto-publicação a cada minuto
+
+## 2. Editor Visual de Roteiros de Vídeo
+
+### Nova Página
+- Criar `src/pages/VideoEditorPage.tsx`
+- Acessível via rota `/dashboard/content/video-editor/:id`
+- Botão "Editar Roteiro" nos cards de vídeo na biblioteca
+
+### Funcionalidades
+- **Timeline visual**: Divide o roteiro em cenas baseado nas marcações `[CENA]`, `[INTRO]`, etc.
+- **Cards de cena**: Cada cena é um card editável com campos para narração, texto em tela, duração estimada
+- **Preview de cenas**: Renderiza cada cena como card visual com ícones e cores por tipo
+- **Drag-and-drop de cenas**: Reordenar cenas arrastando (reutiliza `@dnd-kit`)
+- **Exportação em PDF**: Gera PDF do roteiro formatado usando `window.print()` com CSS otimizado
+
+### Arquivos
+| Arquivo | Ação |
+|---------|------|
+| `src/pages/VideoEditorPage.tsx` | Criar |
+| `src/App.tsx` | Editar (adicionar rota) |
+| `src/pages/ContentLibraryPage.tsx` | Editar (adicionar botão "Editar Roteiro") |
 
 ## Detalhes Técnicos
 
-- Nenhuma migration necessária — `content_type` já inclui `video`
-- TTS usa API nativa do navegador (sem custo, sem API key)
-- Edge function segue mesmo padrão das existentes (auth + streaming SSE)
-- Corrigir auth: `const { data: { session } } = await supabase.auth.getSession(); fetch(..., { headers: { Authorization: \`Bearer \${session.access_token}\` } })`
+- `optimize-schedule` usa Lovable AI com tool calling para retornar JSON estruturado de horários
+- `auto-publish` usa service role key para acessar posts de todos os usuários (cron job)
+- Cron job inserido via `supabase insert tool` (não migration) pois contém dados específicos do projeto
+- Editor de vídeo parseia marcações `[CENA]`, `[INTRO]`, `[HOOK]`, etc. com regex
+- PDF via `@media print` CSS — sem dependência externa
+- Nenhuma migration de tabela necessária
 
 ## Ordem de Execução
-1. Corrigir autenticação em todas as chamadas de edge functions
-2. Criar edge function `generate-video-script`
-3. Adicionar dialog de geração de vídeo na ContentLibraryPage
-4. Implementar player TTS nos cards de áudio
-5. Atualizar roadmap (Fase 12 ✅)
+1. Criar edge function `optimize-schedule`
+2. Criar edge function `auto-publish`
+3. Configurar cron job de auto-publicação
+4. Integrar sugestão de horários na CalendarPage
+5. Adicionar widget de próximos posts no Dashboard
+6. Criar página VideoEditorPage com timeline e editor de cenas
+7. Adicionar exportação PDF
+8. Registrar rota e botão de acesso
+9. Atualizar roadmap (Fase 13 ✅)
 
