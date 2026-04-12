@@ -1024,6 +1024,11 @@ export default function ContentLibraryPage() {
                             Editar Roteiro
                           </DropdownMenuItem>
                         )}
+                        {(item.type === "text") && item.body && (
+                          <DropdownMenuItem onClick={() => handleSEOAnalyze(item.id, item.body!)}>
+                            <TrendingUp className="h-4 w-4 mr-2" />
+                            Analisar SEO
+                          </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() =>
                             updateContent.mutate({
