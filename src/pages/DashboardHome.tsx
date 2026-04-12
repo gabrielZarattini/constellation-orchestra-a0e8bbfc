@@ -36,6 +36,7 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { OnboardingWizard } from '@/components/dashboard/OnboardingWizard';
 import {
   AreaChart,
   Area,
@@ -186,6 +187,19 @@ export default function DashboardHome() {
     loading,
   } = useDashboardData();
 
+  // Onboarding
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+
+  useEffect(() => {
+    if (!user || onboardingChecked) return;
+    supabase.from('profiles').select('onboarding_completed').eq('id', user.id).single()
+      .then(({ data }) => {
+        if (data && !data.onboarding_completed) setShowOnboarding(true);
+        setOnboardingChecked(true);
+      });
+  }, [user, onboardingChecked]);
+
   const now = new Date();
   const { data: upcomingPosts } = useScheduledPosts({ from: startOfDay(now), to: endOfDay(addDays(now, 7)) });
 
@@ -269,6 +283,9 @@ export default function DashboardHome() {
 
   return (
     <div className="space-y-6">
+      {showOnboarding && user && (
+        <OnboardingWizard userId={user.id} onComplete={() => setShowOnboarding(false)} />
+      )}
       {/* Header */}
       <div>
         <h2 className="font-heading text-2xl font-bold text-foreground">Visão Geral</h2>
