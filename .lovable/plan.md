@@ -1,86 +1,56 @@
 
 
-# Plano: Fase 13 (Agendador Inteligente) + Editor Visual de Roteiros de Vídeo
+# Plano: Fase 14 (SEO Engine) + Dashboard de Analytics
 
-## Verificação das Features Existentes
-- Geração de Vídeo: ✅ Edge function `generate-video-script` implementada. Auth corrigida com `getAuthToken()`. Dialog funcional.
-- Player TTS: ✅ Botão "Ouvir" nos cards de áudio com `speechSynthesis`.
-- Thumbnails de Imagem: ✅ Implementados nos cards.
+## 1. Fase 14: SEO Engine — Análise com IA
 
-## 1. Fase 13: Agendador e Orquestrador Inteligente
+### Edge Function
+- Criar `supabase/functions/analyze-seo/index.ts`
+- Modelo: `google/gemini-3-flash-preview` via Lovable AI Gateway
+- Recebe: `content_id` ou `text` + `platform`
+- Retorna JSON estruturado via tool calling com: score SEO (0-100), palavras-chave sugeridas, meta description otimizada, melhorias de estrutura, densidade de palavras-chave, legibilidade
 
-### Edge Function — Otimização de Horários por IA
-- Criar `supabase/functions/optimize-schedule/index.ts`
-- Usa `google/gemini-3-flash-preview` para analisar métricas do usuário e sugerir melhores horários
-- Recebe: `platform`, `content_type`, `target_audience` (opcional)
-- Retorna: lista de horários sugeridos com score de engajamento previsto
-
-### Sistema de Auto-Publicação
-- Criar `supabase/functions/auto-publish/index.ts`
-- Verifica posts com status `queued` e `scheduled_at <= now()`
-- Para cada post: chama `publish-social` para publicar
-- Configurar cron job via `pg_cron` + `pg_net` para executar a cada minuto
-
-### Frontend — Dashboard de Agendamento Inteligente
-- Adicionar seção "Agendamento Inteligente" na `CalendarPage.tsx`
-- Botão "Sugerir Melhor Horário" ao criar/editar post
-- Mostra horários sugeridos com indicadores visuais de engajamento
-- Auto-preenchimento do `scheduled_at` com horário sugerido
-
-### Painel de Orquestração
-- Widget na `DashboardHome.tsx` mostrando próximos posts agendados e status de publicação
-- Indicadores: posts na fila, publicados hoje, falhas de publicação
+### Frontend — Painel SEO na Biblioteca de Conteúdo
+- Adicionar botão "Analisar SEO" nos cards de conteúdo (texto/blog)
+- Dialog com resultado da análise: score visual (gauge), lista de sugestões, keywords recomendadas, meta description gerada
+- Botão "Aplicar Sugestões" que atualiza o conteúdo com as melhorias
 
 ### Arquivos
 | Arquivo | Ação |
 |---------|------|
-| `supabase/functions/optimize-schedule/index.ts` | Criar |
-| `supabase/functions/auto-publish/index.ts` | Criar |
-| `src/pages/CalendarPage.tsx` | Editar (botão sugerir horário) |
-| `src/pages/DashboardHome.tsx` | Editar (widget próximos posts) |
+| `supabase/functions/analyze-seo/index.ts` | Criar |
+| `src/pages/ContentLibraryPage.tsx` | Editar (botão + dialog SEO) |
 
-### Migrations
-- Habilitar extensões `pg_cron` e `pg_net`
-- Criar cron job para auto-publicação a cada minuto
-
-## 2. Editor Visual de Roteiros de Vídeo
+## 2. Dashboard de Analytics
 
 ### Nova Página
-- Criar `src/pages/VideoEditorPage.tsx`
-- Acessível via rota `/dashboard/content/video-editor/:id`
-- Botão "Editar Roteiro" nos cards de vídeo na biblioteca
+- Criar `src/pages/AnalyticsPage.tsx`
+- Rota: `/dashboard/analytics` (sidebar já tem o link)
 
 ### Funcionalidades
-- **Timeline visual**: Divide o roteiro em cenas baseado nas marcações `[CENA]`, `[INTRO]`, etc.
-- **Cards de cena**: Cada cena é um card editável com campos para narração, texto em tela, duração estimada
-- **Preview de cenas**: Renderiza cada cena como card visual com ícones e cores por tipo
-- **Drag-and-drop de cenas**: Reordenar cenas arrastando (reutiliza `@dnd-kit`)
-- **Exportação em PDF**: Gera PDF do roteiro formatado usando `window.print()` com CSS otimizado
+- **Métricas por plataforma**: Gráfico de barras com impressões, cliques, engajamentos por plataforma (dados de `campaign_metrics`)
+- **Métricas por horário**: Heatmap ou gráfico mostrando melhor desempenho por hora/dia da semana
+- **Timeline de publicações**: Gráfico de área com volume de posts publicados ao longo do tempo (dados de `scheduled_posts` com status `published`)
+- **KPIs**: Total impressões, total cliques, CTR médio, total engajamentos
+- **Filtros**: Por período (7d, 30d, 90d) e por plataforma
 
 ### Arquivos
 | Arquivo | Ação |
 |---------|------|
-| `src/pages/VideoEditorPage.tsx` | Criar |
-| `src/App.tsx` | Editar (adicionar rota) |
-| `src/pages/ContentLibraryPage.tsx` | Editar (adicionar botão "Editar Roteiro") |
+| `src/pages/AnalyticsPage.tsx` | Criar |
+| `src/App.tsx` | Editar (registrar rota) |
 
 ## Detalhes Técnicos
 
-- `optimize-schedule` usa Lovable AI com tool calling para retornar JSON estruturado de horários
-- `auto-publish` usa service role key para acessar posts de todos os usuários (cron job)
-- Cron job inserido via `supabase insert tool` (não migration) pois contém dados específicos do projeto
-- Editor de vídeo parseia marcações `[CENA]`, `[INTRO]`, `[HOOK]`, etc. com regex
-- PDF via `@media print` CSS — sem dependência externa
-- Nenhuma migration de tabela necessária
+- SEO Engine usa tool calling para retornar JSON estruturado (sem parsing manual)
+- Analytics usa dados reais de `campaign_metrics` e `scheduled_posts`
+- Gráficos com `recharts` (já instalado)
+- Nenhuma migration necessária — tabelas `campaign_metrics` e `scheduled_posts` já existem
 
 ## Ordem de Execução
-1. Criar edge function `optimize-schedule`
-2. Criar edge function `auto-publish`
-3. Configurar cron job de auto-publicação
-4. Integrar sugestão de horários na CalendarPage
-5. Adicionar widget de próximos posts no Dashboard
-6. Criar página VideoEditorPage com timeline e editor de cenas
-7. Adicionar exportação PDF
-8. Registrar rota e botão de acesso
-9. Atualizar roadmap (Fase 13 ✅)
+1. Criar edge function `analyze-seo`
+2. Integrar botão + dialog SEO na ContentLibraryPage
+3. Criar página AnalyticsPage com gráficos e KPIs
+4. Registrar rota no App.tsx
+5. Atualizar roadmap (Fase 14 ✅)
 
