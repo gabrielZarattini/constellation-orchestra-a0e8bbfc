@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useContentLibrary,
@@ -8,6 +8,7 @@ import {
   useToggleFavorite,
   type Content,
 } from "@/hooks/useContentLibrary";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,6 +55,9 @@ import {
   ImagePlus,
   Palette,
   Mic,
+  Volume2,
+  VolumeX,
+  Square,
 } from "lucide-react";
 
 const CONTENT_TYPES = [
@@ -96,6 +100,82 @@ const AUDIO_DURATIONS = [
   { value: "longo", label: "Longo (5–15min)" },
 ];
 
+const VIDEO_FORMATS = [
+  { value: "reels", label: "📱 Reels/Shorts" },
+  { value: "youtube", label: "▶️ YouTube" },
+  { value: "tutorial", label: "📚 Tutorial" },
+  { value: "storytelling", label: "🎬 Storytelling" },
+];
+
+const VIDEO_DURATIONS = [
+  { value: "curto", label: "Curto (15–60s)" },
+  { value: "médio", label: "Médio (2–10min)" },
+  { value: "longo", label: "Longo (10–30min)" },
+];
+
+/** Get user session token for edge function auth */
+async function getAuthToken(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Você precisa estar logado para usar esta funcionalidade.");
+  return session.access_token;
+}
+
+/** Stream SSE from edge function using user's auth token */
+async function streamFromEdge(
+  fnName: string,
+  body: object,
+  onChunk: (text: string) => void,
+): Promise<string> {
+  const token = await getAuthToken();
+  const resp = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${fnName}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!resp.ok) {
+    const err = await resp.json();
+    throw new Error(err.error || "Erro na geração");
+  }
+
+  const reader = resp.body?.getReader();
+  if (!reader) throw new Error("No stream");
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let nl: number;
+    while ((nl = buffer.indexOf("\n")) !== -1) {
+      let line = buffer.slice(0, nl);
+      buffer = buffer.slice(nl + 1);
+      if (line.endsWith("\r")) line = line.slice(0, -1);
+      if (!line.startsWith("data: ")) continue;
+      const jsonStr = line.slice(6).trim();
+      if (jsonStr === "[DONE]") break;
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const content = parsed.choices?.[0]?.delta?.content;
+        if (content) {
+          result += content;
+          onChunk(result);
+        }
+      } catch {}
+    }
+  }
+  return result;
+}
+
 export default function ContentLibraryPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -107,6 +187,7 @@ export default function ContentLibraryPage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
   const [audioOpen, setAudioOpen] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
 
   // AI generation state
   const [aiPrompt, setAiPrompt] = useState("");
@@ -136,6 +217,17 @@ export default function ContentLibraryPage() {
   const [audioGenerating, setAudioGenerating] = useState(false);
   const [audioResult, setAudioResult] = useState("");
 
+  // Video generation state
+  const [videoPrompt, setVideoPrompt] = useState("");
+  const [videoFormat, setVideoFormat] = useState("youtube");
+  const [videoDuration, setVideoDuration] = useState("médio");
+  const [videoGenerating, setVideoGenerating] = useState(false);
+  const [videoResult, setVideoResult] = useState("");
+
+  // TTS state
+  const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
+  const synthRef = useRef(window.speechSynthesis);
+
   const IMG_STYLES = [
     { value: "fotográfico", label: "Fotográfico" },
     { value: "ilustração", label: "Ilustração" },
@@ -157,107 +249,17 @@ export default function ContentLibraryPage() {
   const deleteContent = useDeleteContent();
   const toggleFavorite = useToggleFavorite();
 
-  const streamSSE = async (url: string, body: object): Promise<string> => {
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!resp.ok) {
-      const err = await resp.json();
-      throw new Error(err.error || "Erro na geração");
-    }
-
-    const reader = resp.body?.getReader();
-    if (!reader) throw new Error("No stream");
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let result = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      let nl: number;
-      while ((nl = buffer.indexOf("\n")) !== -1) {
-        let line = buffer.slice(0, nl);
-        buffer = buffer.slice(nl + 1);
-        if (line.endsWith("\r")) line = line.slice(0, -1);
-        if (!line.startsWith("data: ")) continue;
-        const jsonStr = line.slice(6).trim();
-        if (jsonStr === "[DONE]") break;
-        try {
-          const parsed = JSON.parse(jsonStr);
-          const content = parsed.choices?.[0]?.delta?.content;
-          if (content) result += content;
-        } catch {}
-      }
-    }
-    return result;
-  };
-
   const handleAIGenerate = async () => {
     if (!aiPrompt.trim()) return;
     setAiGenerating(true);
     setAiResult("");
-
     try {
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-content`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            type: "text",
-            prompt: aiPrompt,
-            platform: aiPlatform || undefined,
-            tone: aiTone,
-          }),
-        }
-      );
-
-      if (!resp.ok) {
-        const err = await resp.json();
-        throw new Error(err.error || "Generation failed");
-      }
-
-      const reader = resp.body?.getReader();
-      if (!reader) throw new Error("No stream");
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let result = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        let nl: number;
-        while ((nl = buffer.indexOf("\n")) !== -1) {
-          let line = buffer.slice(0, nl);
-          buffer = buffer.slice(nl + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (!line.startsWith("data: ")) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") break;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              result += content;
-              setAiResult(result);
-            }
-          } catch {}
-        }
-      }
+      await streamFromEdge("generate-content", {
+        type: "text",
+        prompt: aiPrompt,
+        platform: aiPlatform || undefined,
+        tone: aiTone,
+      }, setAiResult);
     } catch (e: any) {
       toast({ title: "Erro na geração", description: e.message, variant: "destructive" });
     } finally {
@@ -305,13 +307,14 @@ export default function ContentLibraryPage() {
     setImgPreview("");
     setImgUrl("");
     try {
+      const token = await getAuthToken();
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ prompt: imgPrompt, style: imgStyle }),
         }
@@ -352,58 +355,12 @@ export default function ContentLibraryPage() {
     if (!audioPrompt.trim()) return;
     setAudioGenerating(true);
     setAudioResult("");
-
     try {
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-audio-script`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            prompt: audioPrompt,
-            format: audioFormat,
-            duration: audioDuration,
-          }),
-        }
-      );
-
-      if (!resp.ok) {
-        const err = await resp.json();
-        throw new Error(err.error || "Erro na geração");
-      }
-
-      const reader = resp.body?.getReader();
-      if (!reader) throw new Error("No stream");
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let result = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        let nl: number;
-        while ((nl = buffer.indexOf("\n")) !== -1) {
-          let line = buffer.slice(0, nl);
-          buffer = buffer.slice(nl + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (!line.startsWith("data: ")) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") break;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              result += content;
-              setAudioResult(result);
-            }
-          } catch {}
-        }
-      }
+      await streamFromEdge("generate-audio-script", {
+        prompt: audioPrompt,
+        format: audioFormat,
+        duration: audioDuration,
+      }, setAudioResult);
     } catch (e: any) {
       toast({ title: "Erro na geração de áudio", description: e.message, variant: "destructive" });
     } finally {
@@ -428,6 +385,40 @@ export default function ContentLibraryPage() {
     setAudioResult("");
   };
 
+  const handleVideoGenerate = async () => {
+    if (!videoPrompt.trim()) return;
+    setVideoGenerating(true);
+    setVideoResult("");
+    try {
+      await streamFromEdge("generate-video-script", {
+        prompt: videoPrompt,
+        format: videoFormat,
+        duration: videoDuration,
+      }, setVideoResult);
+    } catch (e: any) {
+      toast({ title: "Erro na geração de vídeo", description: e.message, variant: "destructive" });
+    } finally {
+      setVideoGenerating(false);
+    }
+  };
+
+  const handleSaveVideo = () => {
+    if (!videoResult || !user) return;
+    createContent.mutate({
+      user_id: user.id,
+      type: "video",
+      title: `${videoFormat.charAt(0).toUpperCase() + videoFormat.slice(1)}: ${videoPrompt.slice(0, 60)}`,
+      body: videoResult,
+      ai_prompt: videoPrompt,
+      ai_model: "google/gemini-3-flash-preview",
+      tags: [videoFormat, "vídeo-ia"],
+      status: "draft",
+    });
+    setVideoOpen(false);
+    setVideoPrompt("");
+    setVideoResult("");
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: "Copiado para a área de transferência!" });
@@ -441,6 +432,32 @@ export default function ContentLibraryPage() {
       default: return <FileText className="h-4 w-4" />;
     }
   };
+
+  // TTS player
+  const handleTTS = useCallback((itemId: string, text: string) => {
+    if (ttsPlaying === itemId) {
+      synthRef.current.cancel();
+      setTtsPlaying(null);
+      return;
+    }
+    synthRef.current.cancel();
+    // Clean script markers for better TTS
+    const cleaned = text.replace(/\[.*?\]/g, "").replace(/\n{2,}/g, "\n");
+    const utterance = new SpeechSynthesisUtterance(cleaned);
+    utterance.lang = "pt-BR";
+    const voices = synthRef.current.getVoices();
+    const ptVoice = voices.find(v => v.lang.startsWith("pt"));
+    if (ptVoice) utterance.voice = ptVoice;
+    utterance.onend = () => setTtsPlaying(null);
+    utterance.onerror = () => setTtsPlaying(null);
+    setTtsPlaying(itemId);
+    synthRef.current.speak(utterance);
+  }, [ttsPlaying]);
+
+  const stopTTS = useCallback(() => {
+    synthRef.current.cancel();
+    setTtsPlaying(null);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -749,6 +766,90 @@ export default function ContentLibraryPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Video Generate */}
+          <Dialog open={videoOpen} onOpenChange={setVideoOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Video className="h-4 w-4" />
+                Gerar Vídeo
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Video className="h-5 w-5 text-primary" />
+                  Gerar Roteiro de Vídeo com IA
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Formato</Label>
+                    <Select value={videoFormat} onValueChange={setVideoFormat}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {VIDEO_FORMATS.map((f) => (
+                          <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Duração</Label>
+                    <Select value={videoDuration} onValueChange={setVideoDuration}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {VIDEO_DURATIONS.map((d) => (
+                          <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>Prompt</Label>
+                  <Textarea
+                    value={videoPrompt}
+                    onChange={(e) => setVideoPrompt(e.target.value)}
+                    placeholder="Descreva o roteiro de vídeo que deseja gerar... Ex: tutorial sobre como usar Instagram para negócios"
+                    rows={3}
+                  />
+                </div>
+                <Button
+                  onClick={handleVideoGenerate}
+                  disabled={videoGenerating || !videoPrompt.trim()}
+                  className="w-full gap-2"
+                >
+                  {videoGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}
+                  {videoGenerating ? "Gerando..." : "Gerar Roteiro de Vídeo"}
+                </Button>
+
+                {videoResult && (
+                  <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Roteiro Gerado</Label>
+                      <Button variant="ghost" size="sm" onClick={() => copyToClipboard(videoResult)}>
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copiar
+                      </Button>
+                    </div>
+                    <div className="whitespace-pre-wrap text-sm text-foreground max-h-[300px] overflow-y-auto">
+                      {videoResult}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                {videoResult && (
+                  <Button onClick={handleSaveVideo} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Salvar na Biblioteca
+                  </Button>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -825,6 +926,22 @@ export default function ContentLibraryPage() {
                     </CardTitle>
                   </div>
                   <div className="flex items-center gap-1">
+                    {/* TTS button for audio/music */}
+                    {(item.type === "audio" || item.type === "music") && item.body && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleTTS(item.id, item.body!)}
+                        title={ttsPlaying === item.id ? "Parar" : "Ouvir"}
+                      >
+                        {ttsPlaying === item.id ? (
+                          <Square className="h-3.5 w-3.5 text-destructive" />
+                        ) : (
+                          <Volume2 className="h-3.5 w-3.5 text-primary" />
+                        )}
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
