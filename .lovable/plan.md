@@ -1,56 +1,53 @@
 
 
-# Plano: Fase 14 (SEO Engine) + Dashboard de Analytics
+# Plano: Fase 15 (SEM Engine) + Métricas Demo no Analytics
 
-## 1. Fase 14: SEO Engine — Análise com IA
+## Verificação das Features Existentes
+- SEO Engine: ✅ Edge function `analyze-seo` + botão "Analisar SEO" nos cards de texto
+- Analytics: ✅ Página funcional com gráficos de `campaign_metrics` e `scheduled_posts`
+- Tabela `campaign_metrics` já tem colunas `spend_cents`, `conversions`, `ctr` — prontas para SEM
+
+## 1. Fase 15: SEM Engine — Análise de Anúncios Pagos com IA
 
 ### Edge Function
-- Criar `supabase/functions/analyze-seo/index.ts`
+- Criar `supabase/functions/analyze-sem/index.ts`
 - Modelo: `google/gemini-3-flash-preview` via Lovable AI Gateway
-- Recebe: `content_id` ou `text` + `platform`
-- Retorna JSON estruturado via tool calling com: score SEO (0-100), palavras-chave sugeridas, meta description otimizada, melhorias de estrutura, densidade de palavras-chave, legibilidade
+- Recebe: `campaign_name`, `objective`, `target_audience`, `platforms`, `budget_cents`
+- Retorna via tool calling: sugestões de copy para ads (título + descrição), CPC estimado por plataforma, keywords negativas, score de qualidade previsto, otimizações sugeridas
 
-### Frontend — Painel SEO na Biblioteca de Conteúdo
-- Adicionar botão "Analisar SEO" nos cards de conteúdo (texto/blog)
-- Dialog com resultado da análise: score visual (gauge), lista de sugestões, keywords recomendadas, meta description gerada
-- Botão "Aplicar Sugestões" que atualiza o conteúdo com as melhorias
-
-### Arquivos
-| Arquivo | Ação |
-|---------|------|
-| `supabase/functions/analyze-seo/index.ts` | Criar |
-| `src/pages/ContentLibraryPage.tsx` | Editar (botão + dialog SEO) |
-
-## 2. Dashboard de Analytics
-
-### Nova Página
-- Criar `src/pages/AnalyticsPage.tsx`
-- Rota: `/dashboard/analytics` (sidebar já tem o link)
-
-### Funcionalidades
-- **Métricas por plataforma**: Gráfico de barras com impressões, cliques, engajamentos por plataforma (dados de `campaign_metrics`)
-- **Métricas por horário**: Heatmap ou gráfico mostrando melhor desempenho por hora/dia da semana
-- **Timeline de publicações**: Gráfico de área com volume de posts publicados ao longo do tempo (dados de `scheduled_posts` com status `published`)
-- **KPIs**: Total impressões, total cliques, CTR médio, total engajamentos
-- **Filtros**: Por período (7d, 30d, 90d) e por plataforma
+### Frontend — Painel SEM nas Campanhas
+- Adicionar botão "Analisar SEM" no `CampaignDetail.tsx` para campanhas com budget
+- Dialog com resultado: copy sugerido para ads, CPC estimado, keywords, otimizações
+- Card de métricas pagas no `AnalyticsPage.tsx`: spend total, CPA, ROAS estimado
 
 ### Arquivos
 | Arquivo | Ação |
 |---------|------|
-| `src/pages/AnalyticsPage.tsx` | Criar |
-| `src/App.tsx` | Editar (registrar rota) |
+| `supabase/functions/analyze-sem/index.ts` | Criar |
+| `src/pages/CampaignDetail.tsx` | Editar (botão + dialog SEM) |
+| `src/pages/AnalyticsPage.tsx` | Editar (métricas pagas + dados demo) |
+
+## 2. Métricas Demo no Analytics
+
+Quando o usuário não tem dados reais (`metrics.length === 0` e `posts.length === 0`), exibir dados demo com banner informativo "Dados de demonstração — publique conteúdo para ver métricas reais".
+
+Dados demo incluem:
+- 5 plataformas com impressões/cliques/engajamentos fictícios
+- Timeline de 7 dias com posts simulados
+- KPIs calculados a partir dos dados demo
+- Badge "Demo" nos gráficos
 
 ## Detalhes Técnicos
 
-- SEO Engine usa tool calling para retornar JSON estruturado (sem parsing manual)
-- Analytics usa dados reais de `campaign_metrics` e `scheduled_posts`
-- Gráficos com `recharts` (já instalado)
-- Nenhuma migration necessária — tabelas `campaign_metrics` e `scheduled_posts` já existem
+- `analyze-sem` usa tool calling para JSON estruturado (copy, CPC, keywords)
+- Dados demo são constantes estáticas no `AnalyticsPage.tsx` (sem persistência)
+- Nenhuma migration necessária — `campaign_metrics` já tem `spend_cents` e `conversions`
+- Métricas pagas (spend, CPA) derivadas dos campos existentes
 
 ## Ordem de Execução
-1. Criar edge function `analyze-seo`
-2. Integrar botão + dialog SEO na ContentLibraryPage
-3. Criar página AnalyticsPage com gráficos e KPIs
-4. Registrar rota no App.tsx
-5. Atualizar roadmap (Fase 14 ✅)
+1. Criar edge function `analyze-sem`
+2. Integrar botão + dialog SEM no CampaignDetail
+3. Adicionar métricas pagas ao AnalyticsPage
+4. Adicionar dados demo com banner no Analytics
+5. Atualizar roadmap (Fase 15 ✅)
 
