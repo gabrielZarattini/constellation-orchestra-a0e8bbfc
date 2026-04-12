@@ -1029,6 +1029,7 @@ export default function ContentLibraryPage() {
                             <TrendingUp className="h-4 w-4 mr-2" />
                             Analisar SEO
                           </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           onClick={() =>
                             updateContent.mutate({
