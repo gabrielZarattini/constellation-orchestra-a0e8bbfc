@@ -60,6 +60,7 @@ import {
   VolumeX,
   Square,
   Film,
+  TrendingUp,
 } from "lucide-react";
 
 const CONTENT_TYPES = [
