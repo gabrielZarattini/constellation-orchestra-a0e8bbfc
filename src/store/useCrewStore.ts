@@ -18,6 +18,7 @@ export interface Agent {
 
 export interface Edge {
   id: string;
+  dbId?: string;
   from: string;
   to: string;
   status: 'active' | 'waiting' | 'error' | 'idle';
@@ -51,12 +52,16 @@ interface CrewState {
   selectedAgentId: string | null;
   configOpen: boolean;
   logsOpen: boolean;
+  connectingFrom: string | null;
+  connectionMode: boolean;
   setAgents: (agents: Agent[]) => void;
   setEdges: (edges: Edge[]) => void;
   setLoaded: (loaded: boolean) => void;
   setSelectedAgent: (id: string | null) => void;
   setConfigOpen: (open: boolean) => void;
   setLogsOpen: (open: boolean) => void;
+  setConnectingFrom: (id: string | null) => void;
+  setConnectionMode: (mode: boolean) => void;
   addLog: (log: Omit<LogEntry, 'id' | 'timestamp'>) => void;
   updateAgentStatus: (id: string, status: AgentStatus) => void;
   updateEdgeStatus: (id: string, status: Edge['status']) => void;
@@ -82,12 +87,16 @@ export const useCrewStore = create<CrewState>((set) => ({
   selectedAgentId: null,
   configOpen: false,
   logsOpen: false,
+  connectingFrom: null,
+  connectionMode: false,
   setAgents: (agents) => set({ agents }),
   setEdges: (edges) => set({ edges }),
   setLoaded: (loaded) => set({ loaded }),
   setSelectedAgent: (id) => set({ selectedAgentId: id }),
   setConfigOpen: (open) => set({ configOpen: open }),
   setLogsOpen: (open) => set({ logsOpen: open }),
+  setConnectingFrom: (id) => set({ connectingFrom: id }),
+  setConnectionMode: (mode) => set({ connectionMode: mode, connectingFrom: null }),
   addLog: (log) => set((s) => ({
     logs: [{ ...log, id: `log-${++logCounter}`, timestamp: Date.now() }, ...s.logs].slice(0, 200),
   })),

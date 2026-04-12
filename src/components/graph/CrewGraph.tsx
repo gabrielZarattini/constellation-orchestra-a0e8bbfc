@@ -3,14 +3,33 @@ import { OrbitControls, Stars } from '@react-three/drei';
 import { useCrewStore } from '@/store/useCrewStore';
 import { AgentNode } from './AgentNode';
 import { AgentEdge } from './AgentEdge';
+import { useCallback } from 'react';
 
 function Scene() {
   const agents = useCrewStore((s) => s.agents);
   const edges = useCrewStore((s) => s.edges);
   const selectedAgentId = useCrewStore((s) => s.selectedAgentId);
   const setSelectedAgent = useCrewStore((s) => s.setSelectedAgent);
+  const connectionMode = useCrewStore((s) => s.connectionMode);
+  const connectingFrom = useCrewStore((s) => s.connectingFrom);
+  const setConnectingFrom = useCrewStore((s) => s.setConnectingFrom);
 
   const agentMap = new Map(agents.map((a) => [a.id, a]));
+
+  const handleNodeClick = useCallback((agentId: string) => {
+    if (connectionMode) {
+      if (!connectingFrom) {
+        setConnectingFrom(agentId);
+      } else if (connectingFrom !== agentId) {
+        // Open edge dialog via window bridge
+        (window as any).__openEdgeDialog?.(connectingFrom, agentId);
+      } else {
+        setConnectingFrom(null);
+      }
+    } else {
+      setSelectedAgent(agentId === selectedAgentId ? null : agentId);
+    }
+  }, [connectionMode, connectingFrom, selectedAgentId, setSelectedAgent, setConnectingFrom]);
 
   return (
     <>
@@ -42,7 +61,9 @@ function Scene() {
           status={agent.status}
           position={agent.position}
           selected={selectedAgentId === agent.id}
-          onClick={() => setSelectedAgent(agent.id === selectedAgentId ? null : agent.id)}
+          connecting={connectionMode && connectingFrom === agent.id}
+          connectionMode={connectionMode}
+          onClick={() => handleNodeClick(agent.id)}
         />
       ))}
     </>

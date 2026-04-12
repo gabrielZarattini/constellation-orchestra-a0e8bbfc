@@ -53,6 +53,8 @@ import {
   Filter,
   Copy,
   Tag,
+  ImagePlus,
+  Palette,
 } from "lucide-react";
 
 const CONTENT_TYPES = [
@@ -91,6 +93,7 @@ export default function ContentLibraryPage() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
 
   // AI generation state
   const [aiPrompt, setAiPrompt] = useState("");
@@ -105,6 +108,22 @@ export default function ContentLibraryPage() {
   const [newBody, setNewBody] = useState("");
   const [newType, setNewType] = useState<string>("text");
   const [newTags, setNewTags] = useState("");
+
+  // Image generation state
+  const [imgPrompt, setImgPrompt] = useState("");
+  const [imgStyle, setImgStyle] = useState("fotográfico");
+  const [imgGenerating, setImgGenerating] = useState(false);
+  const [imgPreview, setImgPreview] = useState("");
+  const [imgUrl, setImgUrl] = useState("");
+
+  const IMG_STYLES = [
+    { value: "fotográfico", label: "Fotográfico" },
+    { value: "ilustração", label: "Ilustração" },
+    { value: "3D render", label: "3D" },
+    { value: "minimalista", label: "Minimalista" },
+    { value: "arte digital", label: "Arte Digital" },
+    { value: "aquarela", label: "Aquarela" },
+  ];
 
   const { data: contents = [], isLoading } = useContentLibrary({
     type: typeFilter,
@@ -214,6 +233,55 @@ export default function ContentLibraryPage() {
     setNewTitle("");
     setNewBody("");
     setNewTags("");
+  };
+
+  const handleImageGenerate = async () => {
+    if (!imgPrompt.trim()) return;
+    setImgGenerating(true);
+    setImgPreview("");
+    setImgUrl("");
+    try {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ prompt: imgPrompt, style: imgStyle }),
+        }
+      );
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error || "Erro na geração");
+      }
+      const data = await resp.json();
+      setImgPreview(data.base64);
+      setImgUrl(data.image_url);
+    } catch (e: any) {
+      toast({ title: "Erro na geração de imagem", description: e.message, variant: "destructive" });
+    } finally {
+      setImgGenerating(false);
+    }
+  };
+
+  const handleSaveImage = () => {
+    if (!imgUrl || !user) return;
+    createContent.mutate({
+      user_id: user.id,
+      type: "image",
+      title: imgPrompt.slice(0, 80),
+      media_url: imgUrl,
+      ai_prompt: imgPrompt,
+      ai_model: "google/gemini-3-pro-image-preview",
+      tags: ["imagem-ia", imgStyle],
+      status: "draft",
+    });
+    setImageOpen(false);
+    setImgPrompt("");
+    setImgPreview("");
+    setImgUrl("");
   };
 
   const copyToClipboard = (text: string) => {
@@ -418,6 +486,63 @@ export default function ContentLibraryPage() {
                 <Button onClick={handleCreateManual} disabled={!newTitle}>
                   Criar
                 </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Image Generate */}
+          <Dialog open={imageOpen} onOpenChange={setImageOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <ImagePlus className="h-4 w-4" />
+                Gerar Imagem
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-primary" />
+                  Gerar Imagem com IA
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>Prompt</Label>
+                  <Textarea
+                    value={imgPrompt}
+                    onChange={(e) => setImgPrompt(e.target.value)}
+                    placeholder="Descreva a imagem que deseja criar..."
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label>Estilo</Label>
+                  <Select value={imgStyle} onValueChange={setImgStyle}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {IMG_STYLES.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleImageGenerate} disabled={imgGenerating || !imgPrompt.trim()} className="w-full gap-2">
+                  {imgGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                  {imgGenerating ? "Gerando..." : "Gerar Imagem"}
+                </Button>
+                {imgPreview && (
+                  <div className="rounded-lg border overflow-hidden">
+                    <img src={imgPreview} alt="Imagem gerada" className="w-full h-auto max-h-[300px] object-contain bg-muted" />
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                {imgPreview && (
+                  <Button onClick={handleSaveImage} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Salvar na Biblioteca
+                  </Button>
+                )}
               </DialogFooter>
             </DialogContent>
           </Dialog>

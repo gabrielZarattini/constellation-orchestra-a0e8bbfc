@@ -73,7 +73,6 @@ export function useDeleteAgent() {
 
   return useMutation({
     mutationFn: async (agentKey: string) => {
-      // Delete edges first
       await supabase
         .from('crew_edges')
         .delete()
@@ -91,6 +90,56 @@ export function useDeleteAgent() {
       qc.invalidateQueries({ queryKey: ['crew_agents'] });
       qc.invalidateQueries({ queryKey: ['crew_edges'] });
       toast.success('Agente removido');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// Edge CRUD
+interface CreateEdgeInput {
+  from_agent_key: string;
+  to_agent_key: string;
+  label?: string;
+  status?: string;
+}
+
+export function useCreateEdge() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CreateEdgeInput) => {
+      const { error } = await supabase.from('crew_edges').insert({
+        user_id: user!.id,
+        from_agent_key: input.from_agent_key,
+        to_agent_key: input.to_agent_key,
+        label: input.label || 'Conexão',
+        status: input.status || 'idle',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['crew_edges'] });
+      toast.success('Conexão criada');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDeleteEdge() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (edgeId: string) => {
+      const { error } = await supabase
+        .from('crew_edges')
+        .delete()
+        .eq('id', edgeId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['crew_edges'] });
+      toast.success('Conexão removida');
     },
     onError: (e: Error) => toast.error(e.message),
   });
