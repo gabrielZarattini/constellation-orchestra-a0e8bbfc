@@ -11,6 +11,7 @@ import {
   Sparkles,
   Orbit,
   LogOut,
+  BookOpen,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -36,6 +37,7 @@ const mainItems = [
   { title: 'Conteúdo', url: '/dashboard/content', icon: FileText },
   { title: 'Calendário', url: '/dashboard/calendar', icon: Calendar },
   { title: 'Analytics', url: '/dashboard/analytics', icon: BarChart3 },
+  { title: 'Blog', url: '/dashboard/blog', icon: BookOpen },
 ];
 
 const systemItems = [

@@ -21,6 +21,7 @@ import SocialAccountsPage from "./pages/SocialAccountsPage.tsx";
 import SocialCallback from "./pages/SocialCallback.tsx";
 import ContentLibraryPage from "./pages/ContentLibraryPage.tsx";
 import CalendarPage from "./pages/CalendarPage.tsx";
+import BlogEditorPage from "./pages/BlogEditorPage.tsx";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -88,6 +89,7 @@ const App = () => (
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="social" element={<SocialAccountsPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
+              <Route path="blog" element={<BlogEditorPage />} />
             </Route>
             <Route path="/social/callback" element={<SocialCallback />} />
             <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
