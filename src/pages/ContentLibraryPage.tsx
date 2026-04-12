@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useContentLibrary,
@@ -177,6 +178,7 @@ async function streamFromEdge(
 }
 
 export default function ContentLibraryPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
