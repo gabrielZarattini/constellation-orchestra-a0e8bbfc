@@ -235,6 +235,55 @@ export default function ContentLibraryPage() {
     setNewTags("");
   };
 
+  const handleImageGenerate = async () => {
+    if (!imgPrompt.trim()) return;
+    setImgGenerating(true);
+    setImgPreview("");
+    setImgUrl("");
+    try {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ prompt: imgPrompt, style: imgStyle }),
+        }
+      );
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error || "Erro na geração");
+      }
+      const data = await resp.json();
+      setImgPreview(data.base64);
+      setImgUrl(data.image_url);
+    } catch (e: any) {
+      toast({ title: "Erro na geração de imagem", description: e.message, variant: "destructive" });
+    } finally {
+      setImgGenerating(false);
+    }
+  };
+
+  const handleSaveImage = () => {
+    if (!imgUrl || !user) return;
+    createContent.mutate({
+      user_id: user.id,
+      type: "image",
+      title: imgPrompt.slice(0, 80),
+      media_url: imgUrl,
+      ai_prompt: imgPrompt,
+      ai_model: "google/gemini-3-pro-image-preview",
+      tags: ["imagem-ia", imgStyle],
+      status: "draft",
+    });
+    setImageOpen(false);
+    setImgPrompt("");
+    setImgPreview("");
+    setImgUrl("");
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: "Copiado para a área de transferência!" });
