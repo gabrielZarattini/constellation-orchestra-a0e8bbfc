@@ -1091,6 +1091,86 @@ export default function ContentLibraryPage() {
           ))}
         </div>
       )}
+
+      {/* SEO Analysis Dialog */}
+      <Dialog open={seoOpen} onOpenChange={setSeoOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Análise SEO
+            </DialogTitle>
+          </DialogHeader>
+          {seoAnalyzing ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Analisando conteúdo...</p>
+            </div>
+          ) : seoResult ? (
+            <div className="space-y-5">
+              {/* Score gauge */}
+              <div className="flex items-center gap-6">
+                <div className="relative w-24 h-24">
+                  <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
+                    <circle cx="50" cy="50" r="42" fill="none"
+                      stroke={seoResult.score >= 80 ? "hsl(150, 60%, 45%)" : seoResult.score >= 50 ? "hsl(45, 80%, 50%)" : "hsl(0, 70%, 50%)"}
+                      strokeWidth="8" strokeLinecap="round"
+                      strokeDasharray={`${(seoResult.score / 100) * 264} 264`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-2xl font-bold">{seoResult.score}</span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm"><span className="text-muted-foreground">Legibilidade:</span> <strong>{seoResult.readability_score}/100</strong></p>
+                  <p className="text-sm"><span className="text-muted-foreground">Densidade keywords:</span> <strong>{seoResult.keyword_density}%</strong></p>
+                </div>
+              </div>
+
+              {/* Meta description */}
+              <div className="rounded-lg border p-3 space-y-1">
+                <Label className="text-xs text-muted-foreground">Meta Description Sugerida</Label>
+                <p className="text-sm">{seoResult.meta_description}</p>
+              </div>
+
+              {/* Keywords */}
+              <div>
+                <Label className="text-xs text-muted-foreground">Palavras-chave Recomendadas</Label>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {seoResult.keywords?.map((kw: string) => (
+                    <Badge key={kw} variant="secondary" className="text-xs">{kw}</Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Improvements */}
+              <div>
+                <Label className="text-xs text-muted-foreground">Sugestões de Melhoria</Label>
+                <div className="space-y-2 mt-1">
+                  {seoResult.improvements?.map((imp: any, i: number) => (
+                    <div key={i} className="flex items-start gap-2 text-sm">
+                      <Badge variant={imp.priority === "alta" ? "destructive" : imp.priority === "média" ? "default" : "outline"} className="text-[10px] shrink-0 mt-0.5">
+                        {imp.priority}
+                      </Badge>
+                      <span>{imp.suggestion}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            {seoResult?.optimized_text && (
+              <Button onClick={handleApplySEO} className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Aplicar Sugestões
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
