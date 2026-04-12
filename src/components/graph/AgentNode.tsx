@@ -19,10 +19,12 @@ interface AgentNodeProps {
   status: AgentStatus;
   position: [number, number, number];
   selected: boolean;
+  connecting?: boolean;
+  connectionMode?: boolean;
   onClick: () => void;
 }
 
-export function AgentNode({ id, name, avatar, status, position, selected, onClick }: AgentNodeProps) {
+export function AgentNode({ id, name, avatar, status, position, selected, connecting, connectionMode, onClick }: AgentNodeProps) {
   const meshRef = useRef<THREE.Mesh>(null!);
   const [hovered, setHovered] = useState(false);
   const baseY = position[1];
