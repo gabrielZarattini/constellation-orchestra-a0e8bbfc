@@ -27,7 +27,7 @@ export function useSocialAccounts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('social_accounts')
-        .select('*')
+        .select('id, user_id, platform, platform_user_id, platform_username, is_active, token_expires_at, scopes, metadata, created_at, updated_at')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as SocialAccount[];

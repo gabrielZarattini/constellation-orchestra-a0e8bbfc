@@ -1,7 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 Deno.serve(async (req) => {
-  // This function is called by the OAuth provider as a redirect (GET) or by our frontend (POST)
   const url = new URL(req.url);
 
   let code: string | null;
@@ -9,7 +8,6 @@ Deno.serve(async (req) => {
   let error: string | null;
 
   if (req.method === "GET") {
-    // OAuth provider redirect
     code = url.searchParams.get("code");
     stateStr = url.searchParams.get("state");
     error = url.searchParams.get("error");
@@ -59,7 +57,6 @@ Deno.serve(async (req) => {
       const clientId = Deno.env.get("LINKEDIN_CLIENT_ID")!;
       const clientSecret = Deno.env.get("LINKEDIN_CLIENT_SECRET")!;
 
-      // Exchange code for token
       const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -79,18 +76,17 @@ Deno.serve(async (req) => {
       expiresIn = tokenData.expires_in;
       scopes = (tokenData.scope || "").split(" ");
 
-      // Fetch profile
       const profileRes = await fetch("https://api.linkedin.com/v2/userinfo", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const profile = await profileRes.json();
       platformUserId = profile.sub;
       platformUsername = profile.name || profile.email;
+
     } else if (platform === "instagram" || platform === "facebook") {
       const appId = Deno.env.get("INSTAGRAM_APP_ID")!;
       const appSecret = Deno.env.get("INSTAGRAM_APP_SECRET")!;
 
-      // Exchange code for token
       const tokenRes = await fetch("https://graph.facebook.com/v19.0/oauth/access_token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -104,7 +100,6 @@ Deno.serve(async (req) => {
       const tokenData = await tokenRes.json();
       if (!tokenRes.ok) throw new Error(tokenData.error?.message || "Facebook token exchange failed");
 
-      // Get long-lived token
       const longRes = await fetch(
         `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${tokenData.access_token}`
       );
@@ -114,11 +109,47 @@ Deno.serve(async (req) => {
       expiresIn = longData.expires_in || tokenData.expires_in;
       scopes = ["instagram_basic", "instagram_content_publish"];
 
-      // Fetch user info
       const meRes = await fetch(`https://graph.facebook.com/v19.0/me?fields=id,name&access_token=${accessToken}`);
       const me = await meRes.json();
       platformUserId = me.id;
       platformUsername = me.name;
+
+    } else if (platform === "twitter") {
+      const clientId = Deno.env.get("TWITTER_CLIENT_ID")!;
+      const clientSecret = Deno.env.get("TWITTER_CLIENT_SECRET")!;
+
+      // PKCE code verifier = the state used as plain challenge
+      const codeVerifier = stateStr.slice(0, 43);
+
+      const tokenRes = await fetch("https://api.x.com/2/oauth2/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: callbackUrl,
+          code_verifier: codeVerifier,
+        }),
+      });
+      const tokenData = await tokenRes.json();
+      if (!tokenRes.ok) throw new Error(tokenData.error_description || tokenData.detail || "Twitter token exchange failed");
+
+      accessToken = tokenData.access_token;
+      refreshToken = tokenData.refresh_token || null;
+      expiresIn = tokenData.expires_in;
+      scopes = (tokenData.scope || "").split(" ");
+
+      // Fetch user info
+      const meRes = await fetch("https://api.x.com/2/users/me", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const meData = await meRes.json();
+      platformUserId = meData.data?.id;
+      platformUsername = meData.data?.username;
+
     } else {
       throw new Error(`Unsupported platform: ${platform}`);
     }
@@ -147,7 +178,6 @@ Deno.serve(async (req) => {
 
     if (dbError) {
       console.error("DB upsert error:", dbError);
-      // Fallback: try insert (no unique constraint on user_id+platform by default)
       await supabase.from("social_accounts").insert({
         user_id: userId,
         platform,

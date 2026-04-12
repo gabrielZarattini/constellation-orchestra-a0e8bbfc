@@ -39,7 +39,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch social account using service role
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -108,6 +107,7 @@ Deno.serve(async (req) => {
       });
       result = await res.json();
       if (!res.ok) throw new Error(JSON.stringify(result));
+
     } else if (platform === "instagram") {
       const igAccountId = account.platform_user_id;
       const createRes = await fetch(
@@ -138,6 +138,38 @@ Deno.serve(async (req) => {
       );
       result = await pubRes.json();
       if (!pubRes.ok) throw new Error(JSON.stringify(result));
+
+    } else if (platform === "facebook") {
+      // Facebook Page post via Graph API
+      const pageId = account.platform_user_id;
+      const res = await fetch(
+        `https://graph.facebook.com/v19.0/${pageId}/feed`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: content.text || content,
+            access_token: account.access_token,
+          }),
+        }
+      );
+      result = await res.json();
+      if (!res.ok) throw new Error(JSON.stringify(result));
+
+    } else if (platform === "twitter") {
+      const res = await fetch("https://api.x.com/2/tweets", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${account.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: content.text || content,
+        }),
+      });
+      result = await res.json();
+      if (!res.ok) throw new Error(JSON.stringify(result));
+
     } else {
       return new Response(JSON.stringify({ error: `Publishing to ${platform} not yet supported` }), {
         status: 400,
@@ -152,7 +184,7 @@ Deno.serve(async (req) => {
         .update({
           status: "published",
           published_at: new Date().toISOString(),
-          platform_post_id: result.id || result["X-RestLi-Id"],
+          platform_post_id: result.id || result.data?.id || result["X-RestLi-Id"],
         })
         .eq("id", scheduled_post_id);
     }
