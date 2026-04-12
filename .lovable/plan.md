@@ -1,53 +1,58 @@
 
 
-# Plano: Fase 15 (SEM Engine) + Métricas Demo no Analytics
+# Plano: Fase 16 (Self-Optimization) + Comparativo de Campanhas
 
-## Verificação das Features Existentes
-- SEO Engine: ✅ Edge function `analyze-seo` + botão "Analisar SEO" nos cards de texto
-- Analytics: ✅ Página funcional com gráficos de `campaign_metrics` e `scheduled_posts`
-- Tabela `campaign_metrics` já tem colunas `spend_cents`, `conversions`, `ctr` — prontas para SEM
+## 1. Fase 16: Self-Optimization — Auto-otimização com IA
 
-## 1. Fase 15: SEM Engine — Análise de Anúncios Pagos com IA
-
-### Edge Function
-- Criar `supabase/functions/analyze-sem/index.ts`
+### Edge Function — `self-optimize`
+- Criar `supabase/functions/self-optimize/index.ts`
 - Modelo: `google/gemini-3-flash-preview` via Lovable AI Gateway
-- Recebe: `campaign_name`, `objective`, `target_audience`, `platforms`, `budget_cents`
-- Retorna via tool calling: sugestões de copy para ads (título + descrição), CPC estimado por plataforma, keywords negativas, score de qualidade previsto, otimizações sugeridas
+- Recebe: `user_id` (do token auth)
+- Coleta dados de `campaign_metrics`, `scheduled_posts` e `content_library` do usuário
+- Analisa padrões: melhores horários, plataformas com mais engajamento, tipos de conteúdo que performam melhor
+- Retorna via tool calling: recomendações de horários otimizados, plataformas prioritárias, tipos de conteúdo recomendados, score de otimização atual
+- Salva recomendações na tabela `optimization_policy` (já existe)
 
-### Frontend — Painel SEM nas Campanhas
-- Adicionar botão "Analisar SEM" no `CampaignDetail.tsx` para campanhas com budget
-- Dialog com resultado: copy sugerido para ads, CPC estimado, keywords, otimizações
-- Card de métricas pagas no `AnalyticsPage.tsx`: spend total, CPA, ROAS estimado
+### Frontend — Painel de Auto-otimização no Dashboard
+- Adicionar widget "Auto-otimização IA" no `DashboardHome.tsx`
+- Botão "Analisar e Otimizar" que chama a edge function
+- Exibe: score de otimização, lista de recomendações com ações sugeridas, histórico de otimizações aplicadas (da tabela `optimization_policy`)
+- Cada recomendação tem botão "Aplicar" que atualiza configurações relevantes
 
 ### Arquivos
 | Arquivo | Ação |
 |---------|------|
-| `supabase/functions/analyze-sem/index.ts` | Criar |
-| `src/pages/CampaignDetail.tsx` | Editar (botão + dialog SEM) |
-| `src/pages/AnalyticsPage.tsx` | Editar (métricas pagas + dados demo) |
+| `supabase/functions/self-optimize/index.ts` | Criar |
+| `src/pages/DashboardHome.tsx` | Editar (widget otimização) |
 
-## 2. Métricas Demo no Analytics
+## 2. Comparativo de Campanhas no Analytics
 
-Quando o usuário não tem dados reais (`metrics.length === 0` e `posts.length === 0`), exibir dados demo com banner informativo "Dados de demonstração — publique conteúdo para ver métricas reais".
+### Nova aba/seção no AnalyticsPage
+- Adicionar aba "Comparativo" no `AnalyticsPage.tsx`
+- Selector para escolher 2 campanhas para comparar
+- Gráficos lado a lado: impressões, cliques, engajamentos, CTR, spend, conversões
+- Tabela comparativa com métricas resumidas
+- Dados reais de `campaign_metrics` filtrados por `campaign_id`
+- Modo demo com campanhas fictícias quando sem dados
 
-Dados demo incluem:
-- 5 plataformas com impressões/cliques/engajamentos fictícios
-- Timeline de 7 dias com posts simulados
-- KPIs calculados a partir dos dados demo
-- Badge "Demo" nos gráficos
+### Ajustes no fetch
+- Buscar também `campaign_id` e nome da campanha (join com `campaigns`) para popular o comparativo
+
+### Arquivos
+| Arquivo | Ação |
+|---------|------|
+| `src/pages/AnalyticsPage.tsx` | Editar (aba comparativo + fetch campaign_id) |
 
 ## Detalhes Técnicos
 
-- `analyze-sem` usa tool calling para JSON estruturado (copy, CPC, keywords)
-- Dados demo são constantes estáticas no `AnalyticsPage.tsx` (sem persistência)
-- Nenhuma migration necessária — `campaign_metrics` já tem `spend_cents` e `conversions`
-- Métricas pagas (spend, CPA) derivadas dos campos existentes
+- `self-optimize` usa service role para ler métricas completas do usuário autenticado
+- Tabela `optimization_policy` já existe com campos `action_type`, `action_details`, `context`, `reward`, `applied`
+- Comparativo usa `campaign_metrics.campaign_id` (já existe) + join com `campaigns.name`
+- Nenhuma migration necessária
 
 ## Ordem de Execução
-1. Criar edge function `analyze-sem`
-2. Integrar botão + dialog SEM no CampaignDetail
-3. Adicionar métricas pagas ao AnalyticsPage
-4. Adicionar dados demo com banner no Analytics
-5. Atualizar roadmap (Fase 15 ✅)
+1. Criar edge function `self-optimize`
+2. Integrar widget de otimização no DashboardHome
+3. Adicionar aba de comparativo no AnalyticsPage
+4. Atualizar roadmap (Fase 16 ✅)
 
