@@ -107,6 +107,37 @@ export default function CalendarPage() {
   const [formContentId, setFormContentId] = useState('');
   const [formTime, setFormTime] = useState('12:00');
   const [formAccountId, setFormAccountId] = useState('');
+  const [suggestions, setSuggestions] = useState<Array<{ datetime: string; score: number; reason: string }>>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  const handleSuggestTimes = async () => {
+    setLoadingSuggestions(true);
+    setSuggestions([]);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/optimize-schedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ platform: formPlatform, content_type: 'general' }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setSuggestions(data.suggestions || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const applySuggestion = (datetime: string) => {
+    const d = new Date(datetime);
+    setSelectedDate(d);
+    setFormTime(format(d, 'HH:mm'));
+    setSuggestions([]);
+  };
 
   const navigate = (dir: number) => {
     setCurrentDate(view === 'month' ? (dir > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1)) : (dir > 0 ? addWeeks(currentDate, 1) : subWeeks(currentDate, 1)));
