@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useContentLibrary,
@@ -39,7 +39,6 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Plus,
   Search,
-  Heart,
   MoreVertical,
   Trash2,
   Edit,
@@ -50,11 +49,11 @@ import {
   Music,
   Loader2,
   Star,
-  Filter,
   Copy,
   Tag,
   ImagePlus,
   Palette,
+  Mic,
 } from "lucide-react";
 
 const CONTENT_TYPES = [
@@ -84,6 +83,19 @@ const TONES = [
   { value: "urgente", label: "Urgente" },
 ];
 
+const AUDIO_FORMATS = [
+  { value: "podcast", label: "🎙️ Podcast" },
+  { value: "narração", label: "🎤 Narração" },
+  { value: "jingle", label: "🎵 Jingle" },
+  { value: "música", label: "🎶 Música" },
+];
+
+const AUDIO_DURATIONS = [
+  { value: "curto", label: "Curto (30s–1min)" },
+  { value: "médio", label: "Médio (2–5min)" },
+  { value: "longo", label: "Longo (5–15min)" },
+];
+
 export default function ContentLibraryPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -94,6 +106,7 @@ export default function ContentLibraryPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
+  const [audioOpen, setAudioOpen] = useState(false);
 
   // AI generation state
   const [aiPrompt, setAiPrompt] = useState("");
@@ -116,6 +129,13 @@ export default function ContentLibraryPage() {
   const [imgPreview, setImgPreview] = useState("");
   const [imgUrl, setImgUrl] = useState("");
 
+  // Audio generation state
+  const [audioPrompt, setAudioPrompt] = useState("");
+  const [audioFormat, setAudioFormat] = useState("podcast");
+  const [audioDuration, setAudioDuration] = useState("médio");
+  const [audioGenerating, setAudioGenerating] = useState(false);
+  const [audioResult, setAudioResult] = useState("");
+
   const IMG_STYLES = [
     { value: "fotográfico", label: "Fotográfico" },
     { value: "ilustração", label: "Ilustração" },
@@ -136,6 +156,50 @@ export default function ContentLibraryPage() {
   const updateContent = useUpdateContent();
   const deleteContent = useDeleteContent();
   const toggleFavorite = useToggleFavorite();
+
+  const streamSSE = async (url: string, body: object): Promise<string> => {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || "Erro na geração");
+    }
+
+    const reader = resp.body?.getReader();
+    if (!reader) throw new Error("No stream");
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let result = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let nl: number;
+      while ((nl = buffer.indexOf("\n")) !== -1) {
+        let line = buffer.slice(0, nl);
+        buffer = buffer.slice(nl + 1);
+        if (line.endsWith("\r")) line = line.slice(0, -1);
+        if (!line.startsWith("data: ")) continue;
+        const jsonStr = line.slice(6).trim();
+        if (jsonStr === "[DONE]") break;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const content = parsed.choices?.[0]?.delta?.content;
+          if (content) result += content;
+        } catch {}
+      }
+    }
+    return result;
+  };
 
   const handleAIGenerate = async () => {
     if (!aiPrompt.trim()) return;
@@ -284,6 +348,86 @@ export default function ContentLibraryPage() {
     setImgUrl("");
   };
 
+  const handleAudioGenerate = async () => {
+    if (!audioPrompt.trim()) return;
+    setAudioGenerating(true);
+    setAudioResult("");
+
+    try {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-audio-script`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            prompt: audioPrompt,
+            format: audioFormat,
+            duration: audioDuration,
+          }),
+        }
+      );
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error || "Erro na geração");
+      }
+
+      const reader = resp.body?.getReader();
+      if (!reader) throw new Error("No stream");
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let result = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let nl: number;
+        while ((nl = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, nl);
+          buffer = buffer.slice(nl + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              result += content;
+              setAudioResult(result);
+            }
+          } catch {}
+        }
+      }
+    } catch (e: any) {
+      toast({ title: "Erro na geração de áudio", description: e.message, variant: "destructive" });
+    } finally {
+      setAudioGenerating(false);
+    }
+  };
+
+  const handleSaveAudio = () => {
+    if (!audioResult || !user) return;
+    createContent.mutate({
+      user_id: user.id,
+      type: "audio",
+      title: `${audioFormat.charAt(0).toUpperCase() + audioFormat.slice(1)}: ${audioPrompt.slice(0, 60)}`,
+      body: audioResult,
+      ai_prompt: audioPrompt,
+      ai_model: "google/gemini-3-flash-preview",
+      tags: [audioFormat, "áudio-ia"],
+      status: "draft",
+    });
+    setAudioOpen(false);
+    setAudioPrompt("");
+    setAudioResult("");
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: "Copiado para a área de transferência!" });
@@ -310,7 +454,7 @@ export default function ContentLibraryPage() {
             Crie, organize e gerencie seus conteúdos com IA
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {/* AI Generate */}
           <Dialog open={aiOpen} onOpenChange={setAiOpen}>
             <DialogTrigger asChild>
@@ -327,7 +471,6 @@ export default function ContentLibraryPage() {
                 </DialogTitle>
               </DialogHeader>
 
-              {/* Templates */}
               <div>
                 <Label className="text-sm font-medium">Templates rápidos</Label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
@@ -405,11 +548,7 @@ export default function ContentLibraryPage() {
                   <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium">Resultado</Label>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(aiResult)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => copyToClipboard(aiResult)}>
                         <Copy className="h-3 w-3 mr-1" />
                         Copiar
                       </Button>
@@ -447,11 +586,7 @@ export default function ContentLibraryPage() {
               <div className="space-y-4">
                 <div>
                   <Label>Título</Label>
-                  <Input
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="Título do conteúdo"
-                  />
+                  <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Título do conteúdo" />
                 </div>
                 <div>
                   <Label>Tipo</Label>
@@ -466,26 +601,15 @@ export default function ContentLibraryPage() {
                 </div>
                 <div>
                   <Label>Conteúdo</Label>
-                  <Textarea
-                    value={newBody}
-                    onChange={(e) => setNewBody(e.target.value)}
-                    placeholder="Corpo do conteúdo..."
-                    rows={5}
-                  />
+                  <Textarea value={newBody} onChange={(e) => setNewBody(e.target.value)} placeholder="Corpo do conteúdo..." rows={5} />
                 </div>
                 <div>
                   <Label>Tags (separadas por vírgula)</Label>
-                  <Input
-                    value={newTags}
-                    onChange={(e) => setNewTags(e.target.value)}
-                    placeholder="marketing, social, promoção"
-                  />
+                  <Input value={newTags} onChange={(e) => setNewTags(e.target.value)} placeholder="marketing, social, promoção" />
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleCreateManual} disabled={!newTitle}>
-                  Criar
-                </Button>
+                <Button onClick={handleCreateManual} disabled={!newTitle}>Criar</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -508,12 +632,7 @@ export default function ContentLibraryPage() {
               <div className="space-y-4">
                 <div>
                   <Label>Prompt</Label>
-                  <Textarea
-                    value={imgPrompt}
-                    onChange={(e) => setImgPrompt(e.target.value)}
-                    placeholder="Descreva a imagem que deseja criar..."
-                    rows={3}
-                  />
+                  <Textarea value={imgPrompt} onChange={(e) => setImgPrompt(e.target.value)} placeholder="Descreva a imagem que deseja criar..." rows={3} />
                 </div>
                 <div>
                   <Label>Estilo</Label>
@@ -546,6 +665,90 @@ export default function ContentLibraryPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Audio Generate */}
+          <Dialog open={audioOpen} onOpenChange={setAudioOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Mic className="h-4 w-4" />
+                Gerar Áudio
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Mic className="h-5 w-5 text-primary" />
+                  Gerar Roteiro de Áudio com IA
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Formato</Label>
+                    <Select value={audioFormat} onValueChange={setAudioFormat}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {AUDIO_FORMATS.map((f) => (
+                          <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Duração</Label>
+                    <Select value={audioDuration} onValueChange={setAudioDuration}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {AUDIO_DURATIONS.map((d) => (
+                          <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>Prompt</Label>
+                  <Textarea
+                    value={audioPrompt}
+                    onChange={(e) => setAudioPrompt(e.target.value)}
+                    placeholder="Descreva o roteiro de áudio que deseja gerar... Ex: podcast sobre marketing digital para iniciantes"
+                    rows={3}
+                  />
+                </div>
+                <Button
+                  onClick={handleAudioGenerate}
+                  disabled={audioGenerating || !audioPrompt.trim()}
+                  className="w-full gap-2"
+                >
+                  {audioGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+                  {audioGenerating ? "Gerando..." : "Gerar Roteiro de Áudio"}
+                </Button>
+
+                {audioResult && (
+                  <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Roteiro Gerado</Label>
+                      <Button variant="ghost" size="sm" onClick={() => copyToClipboard(audioResult)}>
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copiar
+                      </Button>
+                    </div>
+                    <div className="whitespace-pre-wrap text-sm text-foreground max-h-[300px] overflow-y-auto">
+                      {audioResult}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                {audioResult && (
+                  <Button onClick={handleSaveAudio} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Salvar na Biblioteca
+                  </Button>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -553,17 +756,10 @@ export default function ContentLibraryPage() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar conteúdo..."
-            className="pl-9"
-          />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar conteúdo..." className="pl-9" />
         </div>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Tipo" />
-          </SelectTrigger>
+          <SelectTrigger className="w-[130px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
           <SelectContent>
             {CONTENT_TYPES.map((t) => (
               <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
@@ -571,9 +767,7 @@ export default function ContentLibraryPage() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
+          <SelectTrigger className="w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="draft">Rascunho</SelectItem>
@@ -581,11 +775,7 @@ export default function ContentLibraryPage() {
             <SelectItem value="published">Publicado</SelectItem>
           </SelectContent>
         </Select>
-        <Button
-          variant={favoritesOnly ? "default" : "outline"}
-          size="icon"
-          onClick={() => setFavoritesOnly(!favoritesOnly)}
-        >
+        <Button variant={favoritesOnly ? "default" : "outline"} size="icon" onClick={() => setFavoritesOnly(!favoritesOnly)}>
           <Star className={`h-4 w-4 ${favoritesOnly ? "fill-current" : ""}`} />
         </Button>
       </div>
@@ -612,7 +802,20 @@ export default function ContentLibraryPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {contents.map((item) => (
-            <Card key={item.id} className="group hover:border-primary/30 transition-colors">
+            <Card key={item.id} className="group hover:border-primary/30 transition-colors overflow-hidden">
+              {/* Image thumbnail */}
+              {item.type === "image" && item.media_url && (
+                <div className="aspect-video w-full overflow-hidden bg-muted">
+                  <img
+                    src={item.media_url}
+                    alt={item.title || "Imagem"}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
