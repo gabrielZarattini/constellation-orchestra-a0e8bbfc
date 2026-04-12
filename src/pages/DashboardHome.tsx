@@ -36,6 +36,7 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { OnboardingWizard } from '@/components/dashboard/OnboardingWizard';
 import {
   AreaChart,
   Area,
@@ -282,6 +283,9 @@ export default function DashboardHome() {
 
   return (
     <div className="space-y-6">
+      {showOnboarding && user && (
+        <OnboardingWizard userId={user.id} onComplete={() => setShowOnboarding(false)} />
+      )}
       {/* Header */}
       <div>
         <h2 className="font-heading text-2xl font-bold text-foreground">Visão Geral</h2>

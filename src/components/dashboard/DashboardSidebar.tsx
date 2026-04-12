@@ -12,10 +12,12 @@ import {
   Orbit,
   LogOut,
   BookOpen,
+  Shield,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsAdmin } from '@/hooks/useAdminData';
 import {
   Sidebar,
   SidebarContent,
@@ -52,6 +54,7 @@ export function DashboardSidebar() {
   const collapsed = state === 'collapsed';
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const { isAdmin } = useIsAdmin();
 
   const handleSignOut = async () => {
     await signOut();
@@ -115,6 +118,24 @@ export function DashboardSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink to="/dashboard/admin" className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
+                      <Shield className="mr-2 h-4 w-4 shrink-0" />
+                      {!collapsed && <span>Administração</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>
