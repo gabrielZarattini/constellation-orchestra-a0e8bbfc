@@ -24,16 +24,15 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = user.id;
     const { platform, redirect_uri } = await req.json();
 
     if (!platform || !redirect_uri) {
@@ -43,7 +42,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Encode state with userId + platform for the callback
     const state = btoa(JSON.stringify({ userId, platform, redirect_uri }));
 
     let authUrl: string;
