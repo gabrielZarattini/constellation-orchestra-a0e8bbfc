@@ -1,100 +1,42 @@
 
 
-# Fase 6: Integração LinkedIn + Instagram + Bug Fix
+# Plano: Resolver Security Findings + Configurar Credenciais LinkedIn
 
-## Bug encontrado nos testes
+## 1. Corrigir Security Findings
 
-**Status não atualiza na página de detalhe da campanha** — o `updateCampaign` invalida `['campaigns']` mas a página de detalhe usa `useCampaign(id)` com query key `['campaign', id]`. Precisa invalidar ambas as queries.
+### 1a. social_accounts — UPDATE sem WITH CHECK
+- Adicionar `WITH CHECK (auth.uid() = user_id)` na policy de UPDATE para evitar que um usuário reatribua a conta social para outro user_id
 
-## Resultados dos testes
+### 1b. subscriptions — INSERT não autorizado
+- O scan diz que usuários podem inserir subscriptions, mas olhando as policies atuais, já foi removido o INSERT. Vou verificar e marcar como fixed se já estiver correto.
 
-- Wizard 5 steps: todos funcionando corretamente com templates
-- Campanha criada e aparece na listagem com badges
-- Detalhe carrega com informações corretas
-- Sidebar colapsa ao entrar na Constelação e expande ao sair
-- KPI "Campanhas" atualizado para 1
+## 2. Configurar LinkedIn OAuth
 
----
+### Passo a passo para o usuário:
+1. Acesse [LinkedIn Developer Portal](https://developer.linkedin.com/)
+2. Crie um novo App (ou use um existente)
+3. Em "Auth" → copie o **Client ID** e **Client Secret**
+4. Em "Auth" → adicione a Redirect URL: `https://vcytifmwlmvhnlwzkbbf.supabase.co/functions/v1/social-auth-callback`
+5. Em "Products" → solicite acesso a "Share on LinkedIn" e "Sign In with LinkedIn using OpenID Connect"
 
-## Correção do bug
+### Secrets a adicionar:
+- `LINKEDIN_CLIENT_ID`
+- `LINKEDIN_CLIENT_SECRET`
 
-**Arquivo:** `src/hooks/useCampaigns.ts`
-- No `updateCampaign.onSuccess`, invalidar também `['campaign']` para refrescar a página de detalhe
+## 3. Fix no Edge Function social-auth-init
 
----
-
-## Fase 6: LinkedIn + Instagram
-
-### Arquitetura
-
-```text
-Usuário → Página "Redes Sociais" → Conectar LinkedIn/Instagram
-  → Edge Function (oauth-callback) → Salva tokens em social_accounts
-  → Publicar post → Edge Function (publish-social) → API da plataforma
-```
-
-### 6a. Página de Contas Sociais (`src/pages/SocialAccountsPage.tsx`)
-- Listar contas conectadas (da tabela `social_accounts`)
-- Botões "Conectar LinkedIn" e "Conectar Instagram"
-- Status de cada conta (ativa, token expirado)
-- Desconectar conta
-
-### 6b. Edge Functions
-
-1. **`social-auth-init`** — Gera URL de autorização OAuth 2.0
-   - LinkedIn: `https://www.linkedin.com/oauth/v2/authorization`
-   - Instagram (via Facebook): `https://www.facebook.com/v19.0/dialog/oauth`
-   - Redireciona para callback URL
-
-2. **`social-auth-callback`** — Recebe code do OAuth
-   - Troca code por access_token + refresh_token
-   - Salva em `social_accounts` (tokens criptografados)
-   - Busca dados do perfil (username, ID)
-
-3. **`publish-social`** — Publica conteúdo na plataforma
-   - LinkedIn: API de Posts (v2)
-   - Instagram: Graph API (via Facebook)
-   - Verifica token válido, refresh se necessário
-   - Atualiza `scheduled_posts` com status
-
-4. **`refresh-social-token`** — Renova tokens expirados
-   - Chamado automaticamente pelo `publish-social`
-
-### 6c. Secrets necessários
-- `LINKEDIN_CLIENT_ID` + `LINKEDIN_CLIENT_SECRET`
-- `INSTAGRAM_APP_ID` + `INSTAGRAM_APP_SECRET`
-- Callback URL: `{SUPABASE_URL}/functions/v1/social-auth-callback`
-
-### 6d. Página de callback (`src/pages/SocialCallback.tsx`)
-- Rota `/social/callback` que captura o `code` da URL
-- Envia para edge function e redireciona de volta ao dashboard
-
-### 6e. Hook de contas sociais (`src/hooks/useSocialAccounts.ts`)
-- CRUD na tabela `social_accounts`
-- Iniciar fluxo OAuth
-- Verificar status dos tokens
-
-### 6f. Integração no sidebar
-- O link "Conteúdo" já existe — adicionar sub-link ou reutilizar a rota existente
-- Ou usar a rota de Configurações para gerenciar contas sociais
-
----
-
-## Arquivos a criar
-- `supabase/functions/social-auth-init/index.ts`
-- `supabase/functions/social-auth-callback/index.ts`
-- `supabase/functions/publish-social/index.ts`
-- `supabase/functions/refresh-social-token/index.ts`
-- `src/pages/SocialAccountsPage.tsx`
-- `src/pages/SocialCallback.tsx`
-- `src/hooks/useSocialAccounts.ts`
+O edge function usa `supabase.auth.getClaims()` que não existe no SDK. Precisa trocar por `supabase.auth.getUser()` para validar o token corretamente.
 
 ## Arquivos a modificar
-- `src/hooks/useCampaigns.ts` (bug fix: invalidar query do detalhe)
-- `src/App.tsx` (novas rotas)
-- `src/components/dashboard/DashboardSidebar.tsx` (link para redes sociais)
-- `mem://features/roadmap` (atualizar status)
+- Migration SQL: adicionar WITH CHECK na policy de UPDATE do social_accounts
+- `supabase/functions/social-auth-init/index.ts`: fix auth validation
+- `supabase/functions/social-auth-callback/index.ts`: fix auth validation  
+- `supabase/functions/publish-social/index.ts`: fix auth validation
 
-## Pré-requisito
-O usuário precisará fornecer as credenciais OAuth do LinkedIn e Instagram (Client ID + Client Secret) obtidas nos respectivos developer portals.
+## Ordem de execução
+1. Criar migration para fix de segurança
+2. Corrigir edge functions (auth validation)
+3. Deploy edge functions
+4. Solicitar as credenciais do LinkedIn ao usuário
+5. Testar o fluxo OAuth
 
