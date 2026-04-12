@@ -4,9 +4,10 @@ import { useCrewStore } from '@/store/useCrewStore';
 import { AgentNode } from '@/components/graph/AgentNode';
 import { AgentEdge } from '@/components/graph/AgentEdge';
 import { useSimulation } from '@/hooks/useSimulation';
+import { useCrewData } from '@/hooks/useCrewData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Maximize2, Sparkles } from 'lucide-react';
+import { Maximize2, Sparkles, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
