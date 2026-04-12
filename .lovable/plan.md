@@ -1,84 +1,53 @@
 
 
-# Plano: Fase 10 (Imagens IA) + Drag-and-Drop Calendário + Edges na Constelação + UI/UX Polish
+# Plano: Fase 11 (Áudio/Música com IA) + Thumbnails de Imagem na Biblioteca
 
-## 1. UI/UX Polish — Calendário e Constelação
+## Verificação das Features Existentes
+- Calendário: ✅ Posts agendados criam e aparecem no grid. Drag-and-drop e duplicar estão implementados.
+- Geração de Imagem: ✅ Edge function retorna 200, imagem é gerada e salva no storage.
+- Constelação: ✅ Modo Conectar e + Agente visíveis e funcionais.
 
-### Calendário
-- Melhorar responsividade da view semanal (cards mais compactos em telas menores)
-- Adicionar tooltips nos dots de plataforma na view mensal
-- Highlight visual ao arrastar posts (drag-and-drop)
-- Botão de duplicar post no card semanal e no grid mensal
+## 1. Thumbnails de Imagem na Grid de Conteúdo
 
-### Constelação
-- Melhorar visual do painel AgentDetail (glassmorphism mais suave, animações)
-- Melhorar AddAgentDialog com preview do avatar selecionado
-- Feedback visual ao criar/editar/remover agentes
+### O que será feito
+- No card de conteúdo (`ContentLibraryPage.tsx`), quando `item.type === 'image'` e `item.media_url` existir, mostrar thumbnail da imagem acima do texto
+- Thumbnail com `aspect-ratio: 16/9`, `object-cover`, `rounded-t-lg`
+- Fallback com ícone de imagem caso a URL falhe
 
-## 2. Drag-and-Drop no Calendário
+### Arquivo
+- `src/pages/ContentLibraryPage.tsx` (editar seção do card, ~linhas 615-710)
 
-- Instalar dependência: `@dnd-kit/core` + `@dnd-kit/sortable`
-- Tornar cada post arrastável (Draggable) na view mensal e semanal
-- Cada dia é um Droppable
-- Ao soltar: chamar `useUpdateScheduledPost` para atualizar `scheduled_at` mantendo o horário original
-- Adicionar botão "Duplicar" nos cards de post que cria uma cópia com `useCreateScheduledPost`
+## 2. Fase 11: Geração de Áudio/Música com IA
 
-### Arquivos
-- `src/pages/CalendarPage.tsx` (refatorar com dnd-kit)
-
-## 3. Fase 10: Geração de Imagens com IA
+### Abordagem
+- Usar Lovable AI Gateway com modelo de texto para gerar **scripts de áudio** (roteiros para podcasts, narração, jingles)
+- Para geração de áudio real (TTS/música), seria necessário ElevenLabs API key
+- Implementar geração de scripts de áudio como conteúdo tipo `audio` na biblioteca
 
 ### Edge Function
-- Criar `supabase/functions/generate-image/index.ts`
-- Usar Lovable AI com modelo `google/gemini-3-pro-image-preview` (melhor qualidade de imagem)
-- Receber `prompt`, `style` (opcional), retornar base64 da imagem
-- Salvar imagem gerada em storage bucket (criar bucket `generated-images`, público)
-
-### Storage
-- Migration SQL para criar bucket `generated-images` com RLS para upload/leitura pelo dono
+- Criar `supabase/functions/generate-audio-script/index.ts`
+- Usar modelo `google/gemini-3-flash-preview` para gerar roteiros de áudio/podcast/jingle
+- Receber `prompt`, `format` (podcast, narração, jingle, música), `duration` (curto, médio, longo)
 
 ### Frontend
-- Adicionar aba/botão "Gerar Imagem" na `ContentLibraryPage`
-- Dialog com campo de prompt, seletor de estilo (fotográfico, ilustração, 3D, minimalista)
-- Preview da imagem gerada antes de salvar
-- Ao salvar: upload para storage + criar registro em `content_library` com `type: 'image'` e `media_url`
+- Adicionar botão "Gerar Áudio" na `ContentLibraryPage.tsx`
+- Dialog com campo de prompt, seletor de formato (podcast, narração, jingle, música de fundo)
+- Resultado salvo como conteúdo tipo `audio` com body contendo o roteiro
 
 ### Arquivos
-- `supabase/functions/generate-image/index.ts` (novo)
-- Migration SQL para bucket de storage
-- `src/pages/ContentLibraryPage.tsx` (adicionar dialog de geração de imagem)
-
-## 4. Criar Conexões (Edges) entre Agentes via Drag
-
-### Lógica
-- Adicionar hook `useCreateEdge` e `useDeleteEdge` em `useAgentMutations.ts`
-- No `CrewGraph`, adicionar modo "conectar": ao clicar e arrastar de um nó para outro, criar edge
-- Usar estado no store: `connectingFrom: string | null`
-- Ao clicar num nó em modo conectar → setar `connectingFrom`; ao clicar em outro → criar edge no banco
-- Botão toggle "Modo Conexão" no canto superior do ConstellationPage
-- Dialog para definir label e status da nova edge
-
-### Arquivos
-- `src/hooks/useAgentMutations.ts` (adicionar mutations de edge)
-- `src/store/useCrewStore.ts` (adicionar `connectingFrom` state)
-- `src/components/graph/AgentNode.tsx` (visual de conexão)
-- `src/components/graph/CrewGraph.tsx` (lógica de criação de edge)
-- `src/pages/ConstellationPage.tsx` (botão modo conexão)
+- `supabase/functions/generate-audio-script/index.ts` (novo)
+- `src/pages/ContentLibraryPage.tsx` (adicionar dialog + botão + thumbnails)
 
 ## Detalhes Técnicos
 
-- Imagens usam modelo `google/gemini-3-pro-image-preview` via Lovable AI Gateway (não precisa de API key extra)
-- Drag-and-drop com `@dnd-kit` (leve, acessível)
-- Edges persistidos em `crew_edges` (tabela já existe com RLS correto)
-- Nenhuma migration de tabela necessária para edges; apenas migration para bucket de storage
+- Nenhuma migration de banco necessária — `content_library` já suporta type `audio`
+- Thumbnails usam `media_url` existente nos registros de imagem
+- Edge function usa Lovable AI Gateway (sem API key extra)
+- Para TTS real no futuro, perguntaremos sobre ElevenLabs API key
 
 ## Ordem de Execução
-1. Instalar `@dnd-kit/core` + `@dnd-kit/sortable`
-2. Refatorar CalendarPage com drag-and-drop + duplicar
-3. Criar bucket de storage via migration
-4. Criar edge function `generate-image`
-5. Integrar geração de imagem na ContentLibraryPage
-6. Adicionar mutations de edge + modo conexão na Constelação
-7. UI/UX polish geral
-8. Atualizar roadmap
+1. Adicionar thumbnails de imagem nos cards da biblioteca
+2. Criar edge function `generate-audio-script`
+3. Integrar dialog de geração de áudio na ContentLibraryPage
+4. Atualizar roadmap
 
