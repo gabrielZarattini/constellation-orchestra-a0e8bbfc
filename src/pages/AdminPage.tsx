@@ -15,7 +15,7 @@ function fmt(d: string) {
 
 export default function AdminPage() {
   const { isAdmin, loading: roleLoading } = useIsAdmin();
-  const { profiles, roles, subscriptions, auditLogs, usageTracking, loading } = useAdminData();
+  const { profiles, roles, subscriptions, auditLogs, usageTracking, loading } = useAdminData(isAdmin);
 
   if (roleLoading) return <div className="flex justify-center py-20"><Skeleton className="h-8 w-48" /></div>;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
