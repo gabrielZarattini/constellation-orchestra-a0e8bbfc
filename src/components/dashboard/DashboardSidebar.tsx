@@ -13,6 +13,7 @@ import {
   LogOut,
   BookOpen,
   Shield,
+  Wand2,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -40,6 +41,7 @@ const mainItems = [
   { title: 'Calendário', url: '/dashboard/calendar', icon: Calendar },
   { title: 'Analytics', url: '/dashboard/analytics', icon: BarChart3 },
   { title: 'Blog', url: '/dashboard/blog', icon: BookOpen },
+  { title: 'Orquestração', url: '/dashboard/orchestration', icon: Wand2 },
 ];
 
 const systemItems = [
