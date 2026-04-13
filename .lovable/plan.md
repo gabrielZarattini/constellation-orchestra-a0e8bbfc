@@ -1,91 +1,69 @@
 
 
-# Plano: Fase 19 — Polish + Enterprise
+# Plano: Super Prompt de Orquestração — Magic Constellation v1.0
 
-## Escopo
+## Visão Geral
 
-Quatro entregas: (A) Onboarding guiado para novos usuários, (B) Painel de administração, (C) Revisão de UX (lazy loading, breadcrumbs, empty states), (D) Otimização de performance (code splitting, lazy routes).
+Implementar o sistema de orquestração de conteúdo com 3 entregas principais: (A) Edge function de orquestração que gera artigo WordPress + posts LinkedIn/X em cadeia, (B) Sistema de UTM auto-tagging em todos os posts, (C) Dashboard de ROI/Conversão no painel.
 
-## 1. Onboarding Guiado
+## Entrega A — Orquestração de Conteúdo (Edge Function)
 
-### Lógica
-- `profiles.onboarding_completed` já existe (default `false`)
-- Criar componente `OnboardingWizard.tsx` — modal/dialog com 4 steps:
-  1. "Bem-vindo!" — nome/empresa (atualiza `profiles`)
-  2. "Conecte uma rede social" — link para `/dashboard/social`
-  3. "Crie sua primeira campanha" — link para `/dashboard/campaigns/new`
-  4. "Explore a Constelação" — link para `/dashboard/constellation`
-- Exibido no `DashboardHome` quando `onboarding_completed === false`
-- Botão "Pular" marca `onboarding_completed = true`
-- Ao completar o último step, marca automaticamente
+Criar `supabase/functions/orchestrate-content/index.ts` que:
+1. Recebe um `topic` e `campaign_id`
+2. Chama `generate-content` internamente (via Lovable AI) para gerar o artigo WordPress (1200+ palavras, SEO otimizado com meta tags)
+3. Chama `generate-content` para gerar post LinkedIn (storytelling B2B)
+4. Chama `generate-content` para gerar thread X/Twitter (5 tweets)
+5. Chama `generate-image` para gerar imagem da campanha
+6. Publica no WordPress via `publish-wordpress`
+7. Salva tudo na `content_library` com UTM tags
+8. Agenda posts sociais na `scheduled_posts` com UTMs embutidos
+9. Retorna resumo da orquestração
 
-### Arquivos
+### UTM Auto-Tagging
+- Todo link gerado inclui `?utm_source={platform}&utm_medium=social&utm_campaign=magic_constellation_v1`
+- Aplicado automaticamente no corpo do artigo e nos posts sociais
+
+## Entrega B — Página de Orquestração (Frontend)
+
+Criar `src/pages/OrchestrationPage.tsx`:
+- Input de tópico/tema
+- Seleção de plataformas alvo (WordPress, LinkedIn, X)
+- Botão "Orquestrar Campanha" que chama a edge function
+- Progresso em tempo real (steps: Pesquisando → Escrevendo Artigo → Gerando Posts → Publicando)
+- Preview dos conteúdos gerados antes de publicar
+- Adicionar rota `/dashboard/orchestration` e item no sidebar
+
+## Entrega C — Dashboard de ROI
+
+Criar `src/components/dashboard/ROIWidget.tsx` no DashboardHome:
+- Card mostrando: Cliques totais (das redes sociais), Taxa de conversão estimada, Custo de API vs Receita estimada
+- Dados de `campaign_metrics` + `usage_tracking` (créditos consumidos = custo API)
+- Cálculo: Receita estimada = conversões × valor médio por plano (Starter $29, Pro $79, Enterprise $199)
+
+## Entrega D — Salvar Plano na Memória
+
+Criar `mem://features/orchestration-strategy` com as diretrizes de ROI positivo, prova social e escalabilidade.
+
+## Arquivos
+
 | Arquivo | Ação |
 |---------|------|
-| `src/components/dashboard/OnboardingWizard.tsx` | Criar |
-| `src/pages/DashboardHome.tsx` | Editar (importar wizard, fetch profile) |
-
-## 2. Painel de Administração
-
-### Migration
-- Nenhuma nova tabela — usa `user_roles` (role `admin`), `profiles`, `subscriptions`, `audit_logs`, `usage_tracking`
-
-### Frontend
-- Criar `src/pages/AdminPage.tsx` com tabs:
-  - **Usuários**: lista de `profiles` + `user_roles` + `subscriptions` (somente leitura via RLS — precisa de RLS policy para admins)
-  - **Auditoria**: lista de `audit_logs` com filtros
-  - **Uso**: aggregação de `usage_tracking`
-- Rota: `/dashboard/admin` (protegida por role check)
-- Item no sidebar visível apenas para admins
-
-### RLS Policies (migration)
-- `profiles`: admin pode SELECT todos
-- `audit_logs`: admin pode SELECT todos
-- `usage_tracking`: admin pode SELECT todos
-- `subscriptions`: admin pode SELECT todos
-
-### Arquivos
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/AdminPage.tsx` | Criar |
-| `src/hooks/useAdminData.ts` | Criar |
-| `src/App.tsx` | Editar (rota admin) |
-| `src/components/dashboard/DashboardSidebar.tsx` | Editar (item admin condicional) |
-
-## 3. Revisão de UX
-
-- **Empty states**: Adicionar ilustrações/mensagens amigáveis em `CampaignsPage`, `ContentLibraryPage`, `CalendarPage` quando sem dados (já podem ter, verificar e padronizar)
-- **Breadcrumbs**: Adicionar breadcrumb no `DashboardLayout` header baseado no path atual
-- **Feedback visual**: Garantir que todos os botões de ação têm loading states
-
-### Arquivos
-| Arquivo | Ação |
-|---------|------|
-| `src/components/dashboard/DashboardLayout.tsx` | Editar (breadcrumbs no header) |
-
-## 4. Otimização de Performance
-
-- **Lazy loading de rotas**: Converter todas as páginas para `React.lazy()` + `Suspense` no `App.tsx`
-- Reduz bundle inicial significativamente
-
-### Arquivos
-| Arquivo | Ação |
-|---------|------|
-| `src/App.tsx` | Editar (lazy imports + Suspense) |
-
-## Detalhes Técnicos
-
-- Admin check usa `has_role(auth.uid(), 'admin')` já existente
-- RLS policies para admin usam a mesma função `has_role`
-- Onboarding lê/atualiza `profiles` via Supabase client
-- Lazy loading usa `React.lazy` + `Suspense` nativo do React 18
-- Migration necessária apenas para RLS policies de admin (SELECT em profiles, audit_logs, usage_tracking, subscriptions)
+| `supabase/functions/orchestrate-content/index.ts` | Criar — edge function principal |
+| `src/pages/OrchestrationPage.tsx` | Criar — UI de orquestração |
+| `src/components/dashboard/ROIWidget.tsx` | Criar — widget de ROI |
+| `src/App.tsx` | Editar — rota orchestration |
+| `src/components/dashboard/DashboardSidebar.tsx` | Editar — item sidebar |
+| `src/pages/DashboardHome.tsx` | Editar — incluir ROIWidget |
+| `mem://features/orchestration-strategy` | Criar — memória do plano |
+| `mem://index.md` | Atualizar — referência à estratégia |
 
 ## Ordem de Execução
-1. Migration: RLS policies para admin
-2. Criar OnboardingWizard + integrar no DashboardHome
-3. Criar AdminPage + hook + rota + sidebar
-4. Breadcrumbs no DashboardLayout
-5. Lazy loading de rotas no App.tsx
-6. Atualizar roadmap (Fase 19 ✅)
+1. Salvar plano na memória
+2. Criar edge function `orchestrate-content`
+3. Criar `OrchestrationPage` + rota + sidebar
+4. Criar `ROIWidget` + integrar no DashboardHome
+5. Testar fluxo completo
+
+## Nota Importante
+A publicação real no LinkedIn/X depende das APIs sociais já conectadas (`social_accounts`). O sistema de self-healing existente já cobre retries com backoff para falhas de API/token. A edge function `orchestrate-content` vai gerar e salvar o conteúdo, e agendar a publicação via `scheduled_posts` — o fluxo de publicação existente (`auto-publish` + `publish-social`) cuidará da entrega.
 
