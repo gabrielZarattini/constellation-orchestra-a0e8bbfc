@@ -544,6 +544,8 @@ export default function DashboardHome() {
         </motion.div>
       </div>
 
+      <ROIWidget />
+
       <ConstellationWidget />
 
       {upcomingPosts && upcomingPosts.length > 0 && (
