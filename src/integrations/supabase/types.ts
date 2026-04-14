@@ -717,10 +717,7 @@ export type Database = {
     }
     Functions: {
       has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
+        Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
       }
       seed_crew_template: { Args: { _user_id: string }; Returns: undefined }

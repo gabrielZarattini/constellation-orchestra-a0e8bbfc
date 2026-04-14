@@ -19,7 +19,11 @@ export function useIsAdmin() {
     setLoading(true);
 
     supabase
-      .rpc('has_role', { _user_id: user.id, _role: 'admin' })
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle()
       .then(({ data, error }) => {
         if (!mounted) return;
 
@@ -70,7 +74,11 @@ export function useAdminData(enabled = true): AdminData {
     Promise.all([
       supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(100),
       supabase.from('user_roles').select('*'),
-      supabase.from('subscriptions').select('*').order('created_at', { ascending: false }).limit(100),
+      supabase
+        .from('subscriptions')
+        .select('id, user_id, plan, status, cancel_at_period_end, current_period_start, current_period_end, trial_ends_at, created_at, updated_at')
+        .order('created_at', { ascending: false })
+        .limit(100),
       supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200),
       supabase.from('usage_tracking').select('*').order('created_at', { ascending: false }).limit(200),
     ]).then(([p, r, s, a, u]) => {
