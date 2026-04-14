@@ -222,7 +222,8 @@ Deno.serve(async (req) => {
 });
 
 function redirectWithError(msg: string) {
-  return new Response(`<html><body><p>Error: ${msg}</p><script>setTimeout(()=>window.close(),3000)</script></body></html>`, {
+  const safe = msg.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+  return new Response(`<html><body><p>Error: ${safe}</p><script>setTimeout(()=>window.close(),3000)</script></body></html>`, {
     status: 200,
     headers: { "Content-Type": "text/html" },
   });

@@ -1,5 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2/cors";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -7,6 +11,28 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Auth check
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { social_account_id } = await req.json();
     if (!social_account_id) {
       return new Response(JSON.stringify({ error: "social_account_id required" }), {
@@ -15,12 +41,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const { data: account, error } = await supabase
+    const { data: account, error } = await admin
       .from("social_accounts")
       .select("*")
       .eq("id", social_account_id)
@@ -29,6 +52,14 @@ Deno.serve(async (req) => {
     if (error || !account) {
       return new Response(JSON.stringify({ error: "Account not found" }), {
         status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Ownership check
+    if (account.user_id !== user.id) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -58,7 +89,6 @@ Deno.serve(async (req) => {
       newAccessToken = data.access_token;
       newExpiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
     } else if (account.platform === "instagram" || account.platform === "facebook") {
-      // Facebook long-lived tokens can be refreshed
       const res = await fetch(
         `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${Deno.env.get("INSTAGRAM_APP_ID")}&client_secret=${Deno.env.get("INSTAGRAM_APP_SECRET")}&fb_exchange_token=${account.access_token}`
       );
@@ -95,9 +125,8 @@ Deno.serve(async (req) => {
         ? new Date(Date.now() + data.expires_in * 1000).toISOString()
         : null;
 
-      // Also update refresh token if rotated
       if (data.refresh_token) {
-        await supabase
+        await admin
           .from("social_accounts")
           .update({ refresh_token: data.refresh_token })
           .eq("id", social_account_id);
@@ -109,8 +138,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update in DB
-    await supabase
+    await admin
       .from("social_accounts")
       .update({
         access_token: newAccessToken,
@@ -119,12 +147,13 @@ Deno.serve(async (req) => {
       })
       .eq("id", social_account_id);
 
-    return new Response(JSON.stringify({ access_token: newAccessToken, expires_at: newExpiresAt }), {
+    // Don't return the access token — callers should read it server-side
+    return new Response(JSON.stringify({ success: true, expires_at: newExpiresAt }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("refresh-social-token error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: "Token refresh failed" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
