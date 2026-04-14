@@ -107,12 +107,19 @@ serve(async (req) => {
       });
     }
 
-    const { data: publicUrl } = adminClient.storage
+    const { data: signedUrlData, error: signedUrlError } = await adminClient.storage
       .from("generated-images")
-      .getPublicUrl(fileName);
+      .createSignedUrl(fileName, 3600); // 1 hour expiry
+
+    if (signedUrlError) {
+      console.error("Signed URL error:", signedUrlError);
+      return new Response(JSON.stringify({ error: "Erro ao gerar URL da imagem" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(JSON.stringify({
-      image_url: publicUrl.publicUrl,
+      image_url: signedUrlData.signedUrl,
       base64: imageUrl,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
