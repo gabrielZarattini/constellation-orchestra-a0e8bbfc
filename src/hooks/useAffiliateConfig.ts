@@ -25,8 +25,8 @@ export function useAffiliateConfig() {
   const { data: config, isLoading } = useQuery({
     queryKey: ['affiliate_config', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('affiliate_config' as any)
+      const { data, error } = await (supabase as any)
+        .from('affiliate_config')
         .select('*')
         .eq('user_id', user!.id)
         .eq('platform', 'mercadolivre')
@@ -40,8 +40,8 @@ export function useAffiliateConfig() {
   const upsertConfig = useMutation({
     mutationFn: async (values: { app_id: string; client_secret: string; redirect_uri: string }) => {
       if (config?.id) {
-        const { error } = await supabase
-          .from('affiliate_config' as any)
+        const { error } = await (supabase as any)
+          .from('affiliate_config')
           .update({
             app_id: values.app_id,
             client_secret: values.client_secret,
@@ -50,8 +50,8 @@ export function useAffiliateConfig() {
           .eq('id', config.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('affiliate_config' as any)
+        const { error } = await (supabase as any)
+          .from('affiliate_config')
           .insert({
             user_id: user!.id,
             platform: 'mercadolivre',
