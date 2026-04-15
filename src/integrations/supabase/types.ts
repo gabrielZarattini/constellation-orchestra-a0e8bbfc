@@ -14,6 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
+      affiliate_config: {
+        Row: {
+          access_token: string | null
+          app_id: string | null
+          client_secret: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          metadata: Json | null
+          platform: string
+          redirect_uri: string | null
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          app_id?: string | null
+          client_secret?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          platform?: string
+          redirect_uri?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          app_id?: string | null
+          client_secret?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          platform?: string
+          redirect_uri?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      affiliate_links: {
+        Row: {
+          campaign_id: string | null
+          clicks: number
+          content_id: string | null
+          conversions: number
+          created_at: string
+          id: string
+          metadata: Json | null
+          original_url: string
+          platform: string
+          product_id: string | null
+          revenue_cents: number
+          short_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          clicks?: number
+          content_id?: string | null
+          conversions?: number
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          original_url: string
+          platform?: string
+          product_id?: string | null
+          revenue_cents?: number
+          short_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          clicks?: number
+          content_id?: string | null
+          conversions?: number
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          original_url?: string
+          platform?: string
+          product_id?: string | null
+          revenue_cents?: number
+          short_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string

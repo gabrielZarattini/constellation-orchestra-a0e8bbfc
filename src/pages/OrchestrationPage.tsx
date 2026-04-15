@@ -35,6 +35,7 @@ const STEP_LABELS: Record<string, string> = {
 
 export default function OrchestrationPage() {
   const [topic, setTopic] = useState('');
+  const [affiliateUrl, setAffiliateUrl] = useState('');
   const [platforms, setPlatforms] = useState<string[]>(['wordpress', 'linkedin', 'twitter']);
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
@@ -61,7 +62,7 @@ export default function OrchestrationPage() {
 
     try {
       const { data, error } = await supabase.functions.invoke('orchestrate-content', {
-        body: { topic, platforms },
+        body: { topic, platforms, affiliate_url: affiliateUrl || undefined },
       });
 
       if (error) throw error;
@@ -120,6 +121,18 @@ export default function OrchestrationPage() {
                 placeholder="Ex: Como a orquestração de agentes 3D está gerando ROI de 400%"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
+                disabled={running}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                URL do Produto Mercado Livre <span className="text-muted-foreground font-normal">(Opcional — Para Monetização)</span>
+              </label>
+              <Input
+                placeholder="https://produto.mercadolivre.com.br/..."
+                value={affiliateUrl}
+                onChange={(e) => setAffiliateUrl(e.target.value)}
                 disabled={running}
               />
             </div>

@@ -28,6 +28,7 @@ const CalendarPage = lazy(() => import("./pages/CalendarPage.tsx"));
 const BlogEditorPage = lazy(() => import("./pages/BlogEditorPage.tsx"));
 const AdminPage = lazy(() => import("./pages/AdminPage.tsx"));
 const OrchestrationPage = lazy(() => import("./pages/OrchestrationPage.tsx"));
+const AffiliatesPage = lazy(() => import("./pages/AffiliatesPage.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,7 @@ const App = () => (
                 <Route path="blog" element={<BlogEditorPage />} />
                 <Route path="admin" element={<AdminPage />} />
                 <Route path="orchestration" element={<OrchestrationPage />} />
+                <Route path="affiliates" element={<AffiliatesPage />} />
               </Route>
               <Route path="/social/callback" element={<SocialCallback />} />
               <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
