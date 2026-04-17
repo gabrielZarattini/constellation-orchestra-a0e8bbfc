@@ -142,8 +142,9 @@ Responda sempre em português brasileiro.`;
     });
   } catch (e) {
     console.error("analyze-sem error:", e);
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Falha na análise SEM. Tente novamente em instantes." }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

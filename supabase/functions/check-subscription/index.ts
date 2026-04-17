@@ -90,9 +90,10 @@ Deno.serve(async (req) => {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: msg });
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const isAuth = msg.toLowerCase().includes("auth") || msg.toLowerCase().includes("user not found") || msg.toLowerCase().includes("authorization");
+    return new Response(
+      JSON.stringify({ error: isAuth ? "Não autorizado" : "Falha ao verificar assinatura. Tente novamente." }),
+      { status: isAuth ? 401 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
