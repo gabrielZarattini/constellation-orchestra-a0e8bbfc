@@ -74,7 +74,8 @@ Deno.serve(async (req) => {
     const wpData = await wpRes.json();
 
     if (!wpRes.ok) {
-      throw new Error(`WordPress API failed [${wpRes.status}]: ${JSON.stringify(wpData)}`);
+      console.error("WordPress API failed:", wpRes.status, wpData);
+      throw new Error("WORDPRESS_PUBLISH_FAILED");
     }
 
     return new Response(JSON.stringify({
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     console.error("publish-wordpress error:", e);
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }),
+      JSON.stringify({ error: "Falha ao publicar no WordPress. Verifique a conexão e tente novamente." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

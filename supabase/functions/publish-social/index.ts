@@ -106,7 +106,10 @@ Deno.serve(async (req) => {
         }),
       });
       result = await res.json();
-      if (!res.ok) throw new Error(JSON.stringify(result));
+      if (!res.ok) {
+        console.error("LinkedIn publish error:", res.status, result);
+        throw new Error("PLATFORM_PUBLISH_FAILED");
+      }
 
     } else if (platform === "instagram") {
       const igAccountId = account.platform_user_id;
@@ -123,7 +126,10 @@ Deno.serve(async (req) => {
         }
       );
       const container = await createRes.json();
-      if (!createRes.ok) throw new Error(JSON.stringify(container));
+      if (!createRes.ok) {
+        console.error("Instagram media create error:", createRes.status, container);
+        throw new Error("PLATFORM_PUBLISH_FAILED");
+      }
 
       const pubRes = await fetch(
         `https://graph.facebook.com/v19.0/${igAccountId}/media_publish`,
@@ -137,7 +143,10 @@ Deno.serve(async (req) => {
         }
       );
       result = await pubRes.json();
-      if (!pubRes.ok) throw new Error(JSON.stringify(result));
+      if (!pubRes.ok) {
+        console.error("Instagram publish error:", pubRes.status, result);
+        throw new Error("PLATFORM_PUBLISH_FAILED");
+      }
 
     } else if (platform === "facebook") {
       // Facebook Page post via Graph API
@@ -154,7 +163,10 @@ Deno.serve(async (req) => {
         }
       );
       result = await res.json();
-      if (!res.ok) throw new Error(JSON.stringify(result));
+      if (!res.ok) {
+        console.error("Facebook publish error:", res.status, result);
+        throw new Error("PLATFORM_PUBLISH_FAILED");
+      }
 
     } else if (platform === "twitter") {
       const res = await fetch("https://api.x.com/2/tweets", {
@@ -168,7 +180,10 @@ Deno.serve(async (req) => {
         }),
       });
       result = await res.json();
-      if (!res.ok) throw new Error(JSON.stringify(result));
+      if (!res.ok) {
+        console.error("Twitter publish error:", res.status, result);
+        throw new Error("PLATFORM_PUBLISH_FAILED");
+      }
 
     } else {
       return new Response(JSON.stringify({ error: `Publishing to ${platform} not yet supported` }), {
@@ -194,9 +209,9 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error("publish-social error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Falha ao publicar. Tente novamente em instantes." }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
